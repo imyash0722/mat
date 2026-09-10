@@ -23,18 +23,32 @@ fn print_help() {
 
 USAGE:
     mdview [OPTIONS] [FILE]
+    md [OPTIONS] [FILE]
 
 ARGS:
     <FILE>    Markdown file to view (or - for standard input)
 
 OPTIONS:
-    -p, --no-pager        Do not pipe output into a pager
-    -w, --width <COLS>    Override terminal display width
-    -v, -V, --version     Print version information
-    -h, --help            Print help information
+    -p, --no-pager               Do not pipe output into a pager
+    -w, --width <COLS>           Override terminal display width
+    -c, --completions <SHELL>    Generate shell completion script (zsh, fish, bash)
+    -v, -V, --version            Print version information
+    -h, --help                   Print help information
 ",
         VERSION
     );
+}
+
+fn print_completions(shell: &str) {
+    match shell.to_lowercase().as_str() {
+        "zsh" => print!("{}", include_str!("../completions/zsh/_mdview")),
+        "fish" => print!("{}", include_str!("../completions/fish/mdview.fish")),
+        "bash" => print!("{}", include_str!("../completions/bash/mdview.bash")),
+        other => {
+            eprintln!("Error: Unsupported shell '{}'. Supported shells: zsh, fish, bash", other);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn parse_args() -> Result<CliArgs, String> {
@@ -51,6 +65,19 @@ fn parse_args() -> Result<CliArgs, String> {
             }
             "-v" | "-V" | "--version" => {
                 println!("mdview {}", VERSION);
+                std::process::exit(0);
+            }
+            "-c" | "--completions" => {
+                if let Some(shell) = args.next() {
+                    print_completions(&shell);
+                    std::process::exit(0);
+                } else {
+                    return Err("Option '--completions' requires a shell name (zsh, fish, bash)".to_string());
+                }
+            }
+            s if s.starts_with("--completions=") => {
+                let shell = &s["--completions=".len()..];
+                print_completions(shell);
                 std::process::exit(0);
             }
             "-p" | "--no-pager" => {
