@@ -125,27 +125,25 @@ fn get_terminal_width(custom_width: Option<usize>) -> usize {
         return w.max(40);
     }
     if let Some((terminal_size::Width(w), _)) = terminal_size() {
-        return (w as usize).min(100).max(40);
+        return (w as usize).clamp(40, 100);
     }
-    if let Ok(cols) = env::var("COLUMNS") {
-        if let Ok(w) = cols.parse::<usize>() {
-            return w.min(100).max(40);
-        }
+    if let Ok(cols) = env::var("COLUMNS")
+        && let Ok(w) = cols.parse::<usize>()
+    {
+        return w.clamp(40, 100);
     }
     80
 }
 
 fn format_bat_header(path: &str, width: usize) -> String {
-    let display_name = if path.starts_with('/') {
-        if let Ok(cwd) = env::current_dir() {
-            if let Ok(rel) = std::path::Path::new(path).strip_prefix(&cwd) {
-                rel.to_str().unwrap_or(path)
-            } else {
-                std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path)
-            }
-        } else {
-            std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path)
-        }
+    let path_obj = std::path::Path::new(path);
+    let display_name = if path_obj.is_absolute() {
+        env::current_dir()
+            .ok()
+            .and_then(|cwd| path_obj.strip_prefix(&cwd).ok())
+            .and_then(|rel| rel.to_str())
+            .or_else(|| path_obj.file_name().and_then(|s| s.to_str()))
+            .unwrap_or(path)
     } else {
         path
     };
@@ -187,12 +185,13 @@ fn output_with_pager(rendered: &str, no_pager: bool) -> io::Result<()> {
     let mut pager_args: Vec<&str> = parts.collect();
 
     // Default flags for less to pass ANSI colors and avoid clearing screen
-    if pager_bin == "less" || pager_bin.ends_with("/less") {
-        if pager_args.is_empty() && env::var("LESS").is_err() {
-            pager_args.push("-R"); // Raw control characters (ANSI colors)
-            pager_args.push("-F"); // Quit if one screen
-            pager_args.push("-X"); // Don't clear screen
-        }
+    if (pager_bin == "less" || pager_bin.ends_with("/less"))
+        && pager_args.is_empty()
+        && env::var("LESS").is_err()
+    {
+        pager_args.push("-R"); // Raw control characters (ANSI colors)
+        pager_args.push("-F"); // Quit if one screen
+        pager_args.push("-X"); // Don't clear screen
     }
 
     match Command::new(pager_bin)
@@ -256,23 +255,19 @@ fn main() {
     let renderer = render::MarkdownRenderer::new(term_width);
     let rendered = renderer.render(&content);
 
+    let file_path = args.file.as_deref().filter(|p| *p != "-");
     let mut full_output = String::new();
-    if let Some(path) = args.file.as_deref() {
-        if path != "-" {
-            full_output.push_str(&format_bat_header(path, term_width));
-        }
+    if let Some(path) = file_path {
+        full_output.push_str(&format_bat_header(path, term_width));
     }
     full_output.push_str(&rendered);
-
-    if let Some(path) = args.file.as_deref() {
-        if path != "-" {
-            full_output.push_str(&format_bat_footer(term_width));
-        }
+    if file_path.is_some() {
+        full_output.push_str(&format_bat_footer(term_width));
     }
 
-    if let Err(e) = output_with_pager(&full_output, args.no_pager) {
-        if e.kind() != io::ErrorKind::BrokenPipe {
-            eprintln!("Error writing output: {}", e);
-        }
+    if let Err(e) = output_with_pager(&full_output, args.no_pager)
+        && e.kind() != io::ErrorKind::BrokenPipe
+    {
+        eprintln!("Error writing output: {}", e);
     }
 }

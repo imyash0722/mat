@@ -1,20 +1,29 @@
 use std::sync::OnceLock;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::ThemeSet;
+use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
 
 struct SyntaxState {
     ps: SyntaxSet,
-    ts: ThemeSet,
+    theme: Theme,
 }
 
 static STATE: OnceLock<SyntaxState> = OnceLock::new();
 
 fn get_state() -> &'static SyntaxState {
-    STATE.get_or_init(|| SyntaxState {
-        ps: SyntaxSet::load_defaults_newlines(),
-        ts: ThemeSet::load_defaults(),
+    STATE.get_or_init(|| {
+        let mut ts = ThemeSet::load_defaults();
+        let theme = ts
+            .themes
+            .remove("base16-ocean.dark")
+            .or_else(|| ts.themes.into_values().next())
+            .expect("At least one default theme available");
+
+        SyntaxState {
+            ps: SyntaxSet::load_defaults_newlines(),
+            theme,
+        }
     })
 }
 
@@ -29,11 +38,7 @@ pub fn highlight_code(code: &str, lang: &str) -> Vec<String> {
         state.ps.find_syntax_plain_text()
     };
 
-    let theme = state.ts.themes.get("base16-ocean.dark")
-        .or_else(|| state.ts.themes.values().next())
-        .expect("At least one default theme available");
-
-    let mut h = HighlightLines::new(syntax, theme);
+    let mut h = HighlightLines::new(syntax, &state.theme);
     let mut lines = Vec::new();
 
     for line in LinesWithEndings::from(code) {

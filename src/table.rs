@@ -1,7 +1,7 @@
 use pulldown_cmark::Alignment;
 use crate::terminal::visible_width;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TableData {
     pub alignments: Vec<Alignment>,
     pub headers: Vec<String>,

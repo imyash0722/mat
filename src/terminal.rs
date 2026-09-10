@@ -15,7 +15,7 @@ pub fn char_width(c: char) -> usize {
 }
 
 fn is_zero_width(c: char) -> bool {
-    matches!(c,
+    c.is_control() || matches!(c,
         '\u{200B}'..='\u{200F}' |
         '\u{202A}'..='\u{202E}' |
         '\u{2060}'..='\u{206F}' |
@@ -180,21 +180,9 @@ fn tokenize_ansi(s: &str) -> Vec<Token> {
     tokens
 }
 
-/// Trims trailing spaces from the end of an ANSI string while preserving any trailing ANSI sequences.
+/// Trims trailing whitespace from the end of a line.
 fn trim_trailing_ansi_spaces(s: &str) -> String {
-    let chars: Vec<char> = s.chars().collect();
-    let mut i = chars.len();
-
-    while i > 0 {
-        let prev = chars[i - 1];
-        if prev == ' ' || prev == '\t' {
-            i -= 1;
-        } else {
-            break;
-        }
-    }
-
-    chars.into_iter().take(i).collect()
+    s.trim_end_matches([' ', '\t']).to_string()
 }
 
 /// Analyzes a line's visible structure (leading spaces, list markers, numbers)
@@ -217,18 +205,22 @@ pub fn compute_smart_indent(line: &str) -> (String, String) {
         return (indent_spaces, rest_spaces);
     }
 
-    // Numbered lists: "1. ", "10. ", "1) ", "(1) "
-    if let Some(dot_idx) = trimmed.find(". ") {
-        if dot_idx <= 4 && trimmed[..dot_idx].chars().all(|c| c.is_ascii_digit()) {
-            let rest_spaces = " ".repeat(leading_spaces + dot_idx + 2);
-            return (indent_spaces, rest_spaces);
-        }
+    // Numbered lists: "1. ", "10. ", "1) "
+    if let Some(dot_idx) = trimmed.find(". ")
+        && dot_idx > 0
+        && dot_idx <= 4
+        && trimmed[..dot_idx].chars().all(|c| c.is_ascii_digit())
+    {
+        let rest_spaces = " ".repeat(leading_spaces + dot_idx + 2);
+        return (indent_spaces, rest_spaces);
     }
-    if let Some(paren_idx) = trimmed.find(") ") {
-        if paren_idx <= 4 && trimmed[..paren_idx].chars().all(|c| c.is_ascii_digit()) {
-            let rest_spaces = " ".repeat(leading_spaces + paren_idx + 2);
-            return (indent_spaces, rest_spaces);
-        }
+    if let Some(paren_idx) = trimmed.find(") ")
+        && paren_idx > 0
+        && paren_idx <= 4
+        && trimmed[..paren_idx].chars().all(|c| c.is_ascii_digit())
+    {
+        let rest_spaces = " ".repeat(leading_spaces + paren_idx + 2);
+        return (indent_spaces, rest_spaces);
     }
 
     // Indented code or paragraphs
@@ -277,7 +269,7 @@ pub fn wrap_ansi(text: &str, max_width: usize, first_indent: &str, rest_indent: 
         }
     }
 
-    if has_content_on_line || is_first_line && !current_line.is_empty() {
+    if has_content_on_line || (is_first_line && !current_line.is_empty()) {
         lines.push(trim_trailing_ansi_spaces(&current_line));
     }
 

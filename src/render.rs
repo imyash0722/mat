@@ -19,7 +19,6 @@ pub struct MarkdownRenderer {
     term_width: usize,
     output: Vec<String>,
     current_text: String,
-    heading_level: Option<HeadingLevel>,
     code_block: Option<(String, String)>, // (lang, code)
     table_data: Option<TableData>,
     in_table_head: bool,
@@ -29,7 +28,7 @@ pub struct MarkdownRenderer {
     item_marker_pending: Option<String>,
     blockquote_stack: Vec<BlockQuoteContext>,
     blockquote_buffer: Vec<String>,
-    active_link_url: Option<String>,
+    in_link: bool,
 }
 
 impl MarkdownRenderer {
@@ -38,7 +37,6 @@ impl MarkdownRenderer {
             term_width: term_width.max(40),
             output: Vec::new(),
             current_text: String::new(),
-            heading_level: None,
             code_block: None,
             table_data: None,
             in_table_head: false,
@@ -48,7 +46,7 @@ impl MarkdownRenderer {
             item_marker_pending: None,
             blockquote_stack: Vec::new(),
             blockquote_buffer: Vec::new(),
-            active_link_url: None,
+            in_link: false,
         }
     }
 
@@ -68,14 +66,12 @@ impl MarkdownRenderer {
     fn handle_event(&mut self, event: Event) {
         match event {
             // Headings
-            Event::Start(Tag::Heading { level, .. }) => {
+            Event::Start(Tag::Heading { .. }) => {
                 self.flush_text_to_paragraph();
-                self.heading_level = Some(level);
                 self.current_text.clear();
             }
             Event::End(TagEnd::Heading(level)) => {
                 let h_text = std::mem::take(&mut self.current_text);
-                self.heading_level = None;
                 self.render_heading(level, &h_text);
             }
 
@@ -147,11 +143,10 @@ impl MarkdownRenderer {
                 self.current_table_row.clear();
             }
             Event::End(TagEnd::TableRow) => {
-                if !self.in_table_head {
-                    if let Some(table) = &mut self.table_data {
+                if !self.in_table_head
+                    && let Some(table) = &mut self.table_data {
                         table.rows.push(std::mem::take(&mut self.current_table_row));
                     }
-                }
             }
             Event::Start(Tag::TableCell) => {
                 self.current_cell.clear();
@@ -211,14 +206,14 @@ impl MarkdownRenderer {
 
             // Links (OSC 8 Clickable)
             Event::Start(Tag::Link { dest_url, .. }) => {
-                self.active_link_url = Some(dest_url.to_string());
+                self.in_link = true;
                 let link_open = format!("\x1b]8;;{}\x1b\\\x1b[4;38;2;0;210;211m", dest_url);
                 self.append_text(&link_open);
             }
             Event::End(TagEnd::Link) => {
                 let link_close = "\x1b[0m\x1b]8;;\x1b\\";
                 self.append_text(link_close);
-                self.active_link_url = None;
+                self.in_link = false;
             }
 
             // Paragraphs
@@ -241,7 +236,7 @@ impl MarkdownRenderer {
             Event::Code(code) => {
                 let mut formatted = format!("\x1b[38;2;255;107;107;48;2;30;30;46m{}\x1b[0m", code);
                 // If inside active link, restore link styling after code reset
-                if self.active_link_url.is_some() {
+                if self.in_link {
                     formatted.push_str("\x1b[4;38;2;0;210;211m");
                 }
                 self.append_text(&formatted);
@@ -257,19 +252,15 @@ impl MarkdownRenderer {
             }
 
             Event::SoftBreak => {
-                if self.code_block.is_some() {
-                    if let Some((_, ref mut code_buf)) = self.code_block {
-                        code_buf.push('\n');
-                    }
+                if let Some((_, ref mut code_buf)) = self.code_block {
+                    code_buf.push('\n');
                 } else {
                     self.append_text(" ");
                 }
             }
             Event::HardBreak => {
-                if self.code_block.is_some() {
-                    if let Some((_, ref mut code_buf)) = self.code_block {
-                        code_buf.push('\n');
-                    }
+                if let Some((_, ref mut code_buf)) = self.code_block {
+                    code_buf.push('\n');
                 } else {
                     self.append_text("\n");
                 }
