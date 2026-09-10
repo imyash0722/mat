@@ -98,14 +98,52 @@ fn get_terminal_width(custom_width: Option<usize>) -> usize {
         return w.max(40);
     }
     if let Some((terminal_size::Width(w), _)) = terminal_size() {
-        return (w as usize).max(40);
+        return (w as usize).min(100).max(40);
     }
     if let Ok(cols) = env::var("COLUMNS") {
         if let Ok(w) = cols.parse::<usize>() {
-            return w.max(40);
+            return w.min(100).max(40);
         }
     }
     80
+}
+
+fn format_bat_header(path: &str, width: usize) -> String {
+    let display_name = if path.starts_with('/') {
+        if let Ok(cwd) = env::current_dir() {
+            if let Ok(rel) = std::path::Path::new(path).strip_prefix(&cwd) {
+                rel.to_str().unwrap_or(path)
+            } else {
+                std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path)
+            }
+        } else {
+            std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path)
+        }
+    } else {
+        path
+    };
+
+    let border_color = "\x1b[38;2;90;90;125m";
+    let reset = "\x1b[0m";
+    let margin = "  ";
+    let bar_len = width.saturating_sub(4);
+    let bar = "─".repeat(bar_len);
+
+    format!(
+        "{margin}{border_color}{bar}{reset}\n\
+         {margin}\x1b[38;2;130;130;160mFile: \x1b[1;38;2;84;160;255m{display_name}{reset}\n\
+         {margin}{border_color}{bar}{reset}\n\n"
+    )
+}
+
+fn format_bat_footer(width: usize) -> String {
+    let border_color = "\x1b[38;2;90;90;125m";
+    let reset = "\x1b[0m";
+    let margin = "  ";
+    let bar_len = width.saturating_sub(4);
+    let bar = "─".repeat(bar_len);
+
+    format!("\n\n{margin}{border_color}{bar}{reset}\n")
 }
 
 fn output_with_pager(rendered: &str, no_pager: bool) -> io::Result<()> {
@@ -191,39 +229,17 @@ fn main() {
     let renderer = render::MarkdownRenderer::new(term_width);
     let rendered = renderer.render(&content);
 
-    let border_color = "\x1b[38;2;90;90;120m";
-    let reset = "\x1b[0m";
-    let width = term_width.saturating_sub(2);
-    let fill = width.saturating_sub(6);
-
     let mut full_output = String::new();
     if let Some(path) = args.file.as_deref() {
         if path != "-" {
-            full_output.push_str(&format!(
-                "{}─────┬{}─{}\n\
-                 {}     │ \x1b[1;37mFile: \x1b[1;38;2;84;160;255m{}\x1b[0m\n\
-                 {}─────┼{}─{}\n\n",
-                border_color,
-                "─".repeat(fill),
-                reset,
-                border_color,
-                path,
-                border_color,
-                "─".repeat(fill),
-                reset
-            ));
+            full_output.push_str(&format_bat_header(path, term_width));
         }
     }
     full_output.push_str(&rendered);
 
     if let Some(path) = args.file.as_deref() {
         if path != "-" {
-            full_output.push_str(&format!(
-                "\n{}─────┴{}─{}\n",
-                border_color,
-                "─".repeat(fill),
-                reset
-            ));
+            full_output.push_str(&format_bat_footer(term_width));
         }
     }
 

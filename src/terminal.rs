@@ -205,8 +205,8 @@ pub fn compute_smart_indent(line: &str) -> (String, String) {
     let leading_spaces = plain.len() - trimmed.len();
     let indent_spaces = " ".repeat(leading_spaces);
 
-    // List bullets: "- ", "* ", "+ "
-    if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") {
+    // List bullets: "- ", "* ", "+ ", "• "
+    if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") || trimmed.starts_with("• ") {
         let rest_spaces = " ".repeat(leading_spaces + 2);
         return (indent_spaces, rest_spaces);
     }
@@ -237,8 +237,8 @@ pub fn compute_smart_indent(line: &str) -> (String, String) {
         return (indent_spaces, rest_spaces);
     }
 
-    // Default top-level text continuation indent
-    (String::new(), "  ".to_string())
+    // Default top-level text continuation indent (align with first line)
+    (String::new(), String::new())
 }
 
 /// Wraps text cleanly at word boundaries respecting terminal width,
@@ -350,6 +350,10 @@ mod tests {
         let (first3, rest3) = compute_smart_indent("1. First numbered item");
         assert_eq!(first3, "");
         assert_eq!(rest3, "   ");
+
+        let (first4, rest4) = compute_smart_indent("Plain paragraph text");
+        assert_eq!(first4, "");
+        assert_eq!(rest4, "");
     }
 
     #[test]

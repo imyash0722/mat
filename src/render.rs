@@ -82,9 +82,10 @@ impl MarkdownRenderer {
             // Horizontal Rule / Full-width Divider
             Event::Rule => {
                 self.flush_text_to_paragraph();
-                let divider = "─".repeat(self.term_width.saturating_sub(2));
+                let margin = "  ";
+                let divider = "─".repeat(self.term_width.saturating_sub(4));
                 self.output.push(String::new());
-                self.output.push(format!("\x1b[1;38;2;165;94;234m{}\x1b[0m", divider));
+                self.output.push(format!("{}\x1b[1;38;2;165;94;234m{}\x1b[0m", margin, divider));
                 self.output.push(String::new());
             }
 
@@ -126,8 +127,8 @@ impl MarkdownRenderer {
             Event::End(TagEnd::Table) => {
                 if let Some(table) = self.table_data.take() {
                     self.output.push(String::new());
-                    for line in table.render(self.term_width) {
-                        self.output.push(line);
+                    for line in table.render(self.term_width.saturating_sub(4)) {
+                        self.output.push(format!("  {}", line));
                     }
                     self.output.push(String::new());
                 }
@@ -182,11 +183,11 @@ impl MarkdownRenderer {
 
                 if let Some(ctx) = self.list_stack.last_mut() {
                     if ctx.is_ordered {
-                        let marker = format!("{}\x1b[38;2;72;219;251m{}.\x1b[0m ", indent, ctx.current_index);
+                        let marker = format!("  {}\x1b[38;2;72;219;251m{}.\x1b[0m ", indent, ctx.current_index);
                         ctx.current_index += 1;
                         self.item_marker_pending = Some(marker);
                     } else {
-                        let marker = format!("{}\x1b[38;2;254;202;87m•\x1b[0m ", indent);
+                        let marker = format!("  {}\x1b[38;2;254;202;87m•\x1b[0m ", indent);
                         self.item_marker_pending = Some(marker);
                     }
                 }
@@ -201,9 +202,9 @@ impl MarkdownRenderer {
                 let indent_level = self.list_stack.len().saturating_sub(1);
                 let indent = "  ".repeat(indent_level);
                 let check_str = if checked {
-                    format!("{}\x1b[1;32m✔\x1b[0m ", indent)
+                    format!("  {}\x1b[1;32m✔\x1b[0m ", indent)
                 } else {
-                    format!("{}\x1b[38;2;130;130;130m☐\x1b[0m ", indent)
+                    format!("  {}\x1b[38;2;130;130;130m☐\x1b[0m ", indent)
                 };
                 self.item_marker_pending = Some(check_str);
             }
@@ -299,7 +300,7 @@ impl MarkdownRenderer {
             return;
         }
 
-        let safe_width = self.term_width.saturating_sub(2);
+        let safe_width = self.term_width.saturating_sub(4);
         if let Some(marker) = self.item_marker_pending.take() {
             let marker_w = visible_width(&marker);
             let rest_indent = " ".repeat(marker_w);
@@ -309,7 +310,10 @@ impl MarkdownRenderer {
             }
         } else {
             let (first_indent, rest_indent) = compute_smart_indent(trimmed);
-            let wrapped = wrap_ansi(trimmed, safe_width, &first_indent, &rest_indent);
+            let base_margin = "  ";
+            let full_first = format!("{}{}", base_margin, first_indent);
+            let full_rest = format!("{}{}", base_margin, rest_indent);
+            let wrapped = wrap_ansi(trimmed, safe_width, &full_first, &full_rest);
             for line in wrapped {
                 self.output.push(line);
             }
@@ -325,80 +329,144 @@ impl MarkdownRenderer {
             HeadingLevel::H1 => {
                 // Plum banner with bold bright yellow text
                 let banner = format!(" ▊ {} ", clean_text);
-                self.output.push(format!("\x1b[1;93;48;2;36;20;50m{}\x1b[0m", banner));
+                self.output.push(format!("  \x1b[1;93;48;2;36;20;50m{}\x1b[0m", banner));
                 self.output.push(String::new());
             }
             HeadingLevel::H2 => {
                 // Bold bright magenta with accent bar
-                self.output.push(format!("\x1b[1;95m▌ {}\x1b[0m", clean_text));
+                self.output.push(format!("  \x1b[1;95m▌ {}\x1b[0m", clean_text));
                 self.output.push(String::new());
             }
             HeadingLevel::H3 => {
                 // Bold bright cyan with accent bar
-                self.output.push(format!("\x1b[1;96m▎ {}\x1b[0m", clean_text));
+                self.output.push(format!("  \x1b[1;96m▎ {}\x1b[0m", clean_text));
+                self.output.push(String::new());
             }
             HeadingLevel::H4 => {
                 // Bold emerald green
-                self.output.push(format!("\x1b[1;92m{}\x1b[0m", clean_text));
+                self.output.push(format!("  \x1b[1;92m{}\x1b[0m", clean_text));
+                self.output.push(String::new());
             }
             HeadingLevel::H5 => {
                 // Bold warm amber/orange
-                self.output.push(format!("\x1b[1;38;2;255;159;67m{}\x1b[0m", clean_text));
+                self.output.push(format!("  \x1b[1;38;2;255;159;67m{}\x1b[0m", clean_text));
+                self.output.push(String::new());
             }
             HeadingLevel::H6 => {
                 // Bold cornflower blue
-                self.output.push(format!("\x1b[1;38;2;84;160;255m{}\x1b[0m", clean_text));
+                self.output.push(format!("  \x1b[1;38;2;84;160;255m{}\x1b[0m", clean_text));
+                self.output.push(String::new());
             }
         }
     }
 
     fn render_code_block(&mut self, lang: &str, code: &str) {
         let highlighted = highlight_code(code, lang);
-        let border_color = "\x1b[38;2;90;90;120m";
-        let num_color = "\x1b[38;2;110;110;130m";
+        let border_color = "\x1b[38;2;80;80;110m";
+        let num_color = "\x1b[38;2;100;100;125m";
         let reset = "\x1b[0m";
 
-        let max_width = self.term_width.saturating_sub(2);
+        let margin = "  ";
+        let block_width = self.term_width.saturating_sub(4);
         let lang_trimmed = lang.trim();
-        let lang_tag = if !lang_trimmed.is_empty() {
-            format!(" \x1b[1;38;2;165;94;234m{}\x1b[0m{} ", lang_trimmed, border_color)
-        } else {
-            String::new()
-        };
-        let lang_vis = if !lang_trimmed.is_empty() { lang_trimmed.len() + 2 } else { 0 };
+        let total_lines = highlighted.len();
+        let num_digits = total_lines.max(1).to_string().len().max(2);
 
-        // Header like bat: ─────┬── <lang> ──────────────────────────────
-        let top_fill = max_width.saturating_sub(8 + lang_vis);
+        // Header:   ──────┬── lang ───────────────────────────────
+        let gutter_prefix = "─".repeat(num_digits + 2);
         self.output.push(String::new());
-        self.output.push(format!("{}──────┬──{}{}{}", border_color, lang_tag, "─".repeat(top_fill), reset));
 
-        // Line number gutter width: " 1234 │ " = 8 chars
-        let gutter_width = 8;
-        let content_width = max_width.saturating_sub(gutter_width).max(20);
+        if !lang_trimmed.is_empty() {
+            let lang_tag = format!(" \x1b[1;38;2;165;94;234m{}\x1b[0m{} ", lang_trimmed, border_color);
+            let lang_vis = lang_trimmed.len() + 2;
+            let top_fill = block_width.saturating_sub((num_digits + 2) + 3 + lang_vis);
+            self.output.push(format!(
+                "{}{}{}┬──{}{}{}{}",
+                margin,
+                border_color,
+                gutter_prefix,
+                lang_tag,
+                border_color,
+                "─".repeat(top_fill),
+                reset
+            ));
+        } else {
+            let top_fill = block_width.saturating_sub((num_digits + 2) + 1);
+            self.output.push(format!(
+                "{}{}{}┬{}{}",
+                margin,
+                border_color,
+                gutter_prefix,
+                "─".repeat(top_fill),
+                reset
+            ));
+        }
+
+        // Gutter col width before code: (num_digits + 1) + 1 (space) + 1 (│) + 1 (space)
+        let gutter_col_width = (num_digits + 1) + 3;
+        let content_width = block_width.saturating_sub(gutter_col_width).max(20);
+        let continuation_prefix = " ".repeat(num_digits + 1);
 
         for (idx, line) in highlighted.iter().enumerate() {
             let line_num = idx + 1;
             let line_clean = line.trim_end_matches(['\r', '\n']);
 
             if line_clean.is_empty() {
-                self.output.push(format!("{}{:>5} │{}", num_color, line_num, reset));
+                self.output.push(format!(
+                    "{}{}{:width$} {}│{}",
+                    margin,
+                    num_color,
+                    line_num,
+                    border_color,
+                    reset,
+                    width = num_digits + 1
+                ));
                 continue;
             }
 
             let (_first, rest_indent) = compute_smart_indent(line_clean);
-            let wrapped = wrap_ansi(line_clean, content_width, "", &rest_indent);
+            let code_continuation = if rest_indent.is_empty() {
+                "  ".to_string()
+            } else {
+                rest_indent
+            };
+            let wrapped = wrap_ansi(line_clean, content_width, "", &code_continuation);
+
             for (w_idx, w_line) in wrapped.iter().enumerate() {
                 if w_idx == 0 {
-                    self.output.push(format!("{}{:>5} {}│{} {}", num_color, line_num, border_color, reset, w_line));
+                    self.output.push(format!(
+                        "{}{}{:width$} {}│{} {}",
+                        margin,
+                        num_color,
+                        line_num,
+                        border_color,
+                        reset,
+                        w_line,
+                        width = num_digits + 1
+                    ));
                 } else {
-                    self.output.push(format!("      {}│{} {}", border_color, reset, w_line));
+                    self.output.push(format!(
+                        "{}{} {}│{} {}",
+                        margin,
+                        continuation_prefix,
+                        border_color,
+                        reset,
+                        w_line
+                    ));
                 }
             }
         }
 
-        // Footer like bat: ──────┴─────────────────────────────────────────
-        let bot_fill = max_width.saturating_sub(7);
-        self.output.push(format!("{}──────┴{}{}", border_color, "─".repeat(bot_fill), reset));
+        // Footer:   ──────┴────────────────────────────────────────
+        let bot_fill = block_width.saturating_sub((num_digits + 2) + 1);
+        self.output.push(format!(
+            "{}{}{}┴{}{}",
+            margin,
+            border_color,
+            gutter_prefix,
+            "─".repeat(bot_fill),
+            reset
+        ));
         self.output.push(String::new());
     }
 
@@ -407,6 +475,8 @@ impl MarkdownRenderer {
         if lines.is_empty() {
             return;
         }
+
+        let margin = "  ";
 
         match ctx {
             BlockQuoteContext::Alert(kind) => {
@@ -419,13 +489,12 @@ impl MarkdownRenderer {
                 };
                 let reset = "\x1b[0m";
 
-                let box_width = (self.term_width.saturating_sub(2)).min(88);
-                let title_tag = format!(" {} ", icon_title);
-                let title_vis = visible_width(&title_tag);
-                let top_fill = box_width.saturating_sub(3 + title_vis);
+                let box_width = (self.term_width.saturating_sub(4)).min(84);
+                let title_vis = visible_width(icon_title);
+                let top_fill = box_width.saturating_sub(6 + title_vis);
 
                 self.output.push(String::new());
-                self.output.push(format!("{}╭─{}{}{}─╮{}", color, title_tag, color, "─".repeat(top_fill), reset));
+                self.output.push(format!("{}{}\x1b[1m╭─ {} ─{}╮{}", margin, color, icon_title, "─".repeat(top_fill), reset));
 
                 let content_width = box_width.saturating_sub(6);
 
@@ -434,17 +503,18 @@ impl MarkdownRenderer {
                     for wline in wrapped {
                         let wline_vis = visible_width(&wline);
                         let pad_right = content_width.saturating_sub(wline_vis);
-                        self.output.push(format!("{}│{}  {}{}{}  {}│{}", color, reset, wline, " ".repeat(pad_right), color, color, reset));
+                        self.output.push(format!("{}{}\x1b[1m│\x1b[0m  {}{}  {}\x1b[1m│{}", margin, color, wline, " ".repeat(pad_right), color, reset));
                     }
                 }
 
-                self.output.push(format!("{}╰{}╯{}", color, "─".repeat(box_width.saturating_sub(2)), reset));
+                self.output.push(format!("{}{}\x1b[1m╰{}╯{}", margin, color, "─".repeat(box_width.saturating_sub(2)), reset));
                 self.output.push(String::new());
             }
             BlockQuoteContext::Standard => {
                 self.output.push(String::new());
+                let quote_bar = format!("{}\x1b[38;2;253;203;110m│ \x1b[0m\x1b[3m", margin);
                 for block in lines {
-                    let wrapped = wrap_ansi(&block, self.term_width.saturating_sub(4), "\x1b[38;2;253;203;110m│ \x1b[0m\x1b[3m", "\x1b[38;2;253;203;110m│ \x1b[0m\x1b[3m");
+                    let wrapped = wrap_ansi(&block, self.term_width.saturating_sub(6), &quote_bar, &quote_bar);
                     for wline in wrapped {
                         self.output.push(format!("{}\x1b[0m", wline));
                     }
