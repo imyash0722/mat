@@ -8,7 +8,6 @@
 > **A vibrant, high-fidelity CLI Markdown reader written in Rust.**  
 > Blazingly fast, standalone single-binary, bat-style framed elegance, GitHub Flavored Markdown (GFM) support, TrueColor syntax highlighting, and native shell integration for Zsh and Fish.
 
----
 
 ## ✨ Features
 
@@ -25,7 +24,6 @@
 - **📖 Comfortable Reading Gutter:** Universal 2-space left margin and default ~100-column reading width cap to prevent eye fatigue on wide tiling monitors.
 - **🐚 Zsh & Fish Shell Support:** Pre-built completions and alias integration for both shells, plus built-in `--completions <shell>` generation.
 
----
 
 ## 📦 Installation
 
@@ -60,7 +58,6 @@ install -m 755 target/release/mdview ~/.local/bin/mdview
 
 Ensure `~/.local/bin` is in your `$PATH`.
 
----
 
 ## 🐚 Shell Integration & Setup
 
@@ -100,7 +97,6 @@ alias md="mdview"
 mdview --completions bash > /etc/bash_completion.d/mdview
 ```
 
----
 
 ## 🛠️ Usage
 
@@ -136,7 +132,6 @@ mdview --completions fish
 | `n` / `N` | Next / previous search match |
 | `q` | Exit pager |
 
----
 
 ## 📋 Architecture
 
@@ -163,7 +158,6 @@ mdview/
 └── CHANGELOG.md          # Keep a Changelog specification
 ```
 
----
 
 ## 🚀 Release Management
 
@@ -176,7 +170,6 @@ Releases are fully automated via GitHub Actions on git tag pushes:
 
 This will run all quality gates (`cargo test`, `cargo clippy`, `cargo fmt`), update versions, tag the commit, and trigger the GitHub release workflow. See [`CHANGELOG.md`](CHANGELOG.md) for version history.
 
----
 
 ## 📄 License
 
