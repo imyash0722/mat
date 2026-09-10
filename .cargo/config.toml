@@ -1,0 +1,3 @@
+[build]
+target-dir = "/home/pineapple/.cache/cargo-target/mdview"
+incremental = false
