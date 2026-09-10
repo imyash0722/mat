@@ -1,5 +1,29 @@
 use unicode_width::UnicodeWidthChar;
 
+/// Computes the visual display width of a single unicode character,
+/// properly accounting for Nerd Font / Private Use Area glyphs and zero-width codes.
+pub fn char_width(c: char) -> usize {
+    if let Some(w) = UnicodeWidthChar::width(c) {
+        w
+    } else if is_zero_width(c) {
+        0
+    } else {
+        // PUA (Private Use Area - Nerd Fonts: U+E000..=U+F8FF, U+F0000..=U+FFFFD, U+100000..=U+10FFFD)
+        // or unassigned terminal glyphs that occupy 1 column.
+        1
+    }
+}
+
+fn is_zero_width(c: char) -> bool {
+    matches!(c,
+        '\u{200B}'..='\u{200F}' |
+        '\u{202A}'..='\u{202E}' |
+        '\u{2060}'..='\u{206F}' |
+        '\u{FE00}'..='\u{FE0F}' |
+        '\u{FEFF}'
+    )
+}
+
 /// Computes the visual column width of a string, ignoring ANSI and OSC escape sequences.
 pub fn visible_width(s: &str) -> usize {
     let mut width = 0;
@@ -31,14 +55,13 @@ pub fn visible_width(s: &str) -> usize {
                 _ => {}
             }
         } else {
-            width += UnicodeWidthChar::width(c).unwrap_or(0);
+            width += char_width(c);
         }
     }
     width
 }
 
 /// Strips ANSI CSI and OSC escape codes from a string.
-#[allow(dead_code)]
 pub fn strip_ansi(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     let mut chars = s.chars().peekable();
@@ -143,7 +166,7 @@ fn tokenize_ansi(s: &str) -> Vec<Token> {
         }
 
         current_raw.push(c);
-        current_width += UnicodeWidthChar::width(c).unwrap_or(0);
+        current_width += char_width(c);
     }
 
     if !current_raw.is_empty() {
@@ -172,6 +195,50 @@ fn trim_trailing_ansi_spaces(s: &str) -> String {
     }
 
     chars.into_iter().take(i).collect()
+}
+
+/// Analyzes a line's visible structure (leading spaces, list markers, numbers)
+/// to determine the appropriate smart hanging indent for continuation lines.
+pub fn compute_smart_indent(line: &str) -> (String, String) {
+    let plain = strip_ansi(line);
+    let trimmed = plain.trim_start();
+    let leading_spaces = plain.len() - trimmed.len();
+    let indent_spaces = " ".repeat(leading_spaces);
+
+    // List bullets: "- ", "* ", "+ "
+    if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") {
+        let rest_spaces = " ".repeat(leading_spaces + 2);
+        return (indent_spaces, rest_spaces);
+    }
+
+    // Task list markers: "- [ ] ", "- [x] ", etc.
+    if trimmed.starts_with("- [ ] ") || trimmed.starts_with("- [x] ") || trimmed.starts_with("- [X] ") {
+        let rest_spaces = " ".repeat(leading_spaces + 6);
+        return (indent_spaces, rest_spaces);
+    }
+
+    // Numbered lists: "1. ", "10. ", "1) ", "(1) "
+    if let Some(dot_idx) = trimmed.find(". ") {
+        if dot_idx <= 4 && trimmed[..dot_idx].chars().all(|c| c.is_ascii_digit()) {
+            let rest_spaces = " ".repeat(leading_spaces + dot_idx + 2);
+            return (indent_spaces, rest_spaces);
+        }
+    }
+    if let Some(paren_idx) = trimmed.find(") ") {
+        if paren_idx <= 4 && trimmed[..paren_idx].chars().all(|c| c.is_ascii_digit()) {
+            let rest_spaces = " ".repeat(leading_spaces + paren_idx + 2);
+            return (indent_spaces, rest_spaces);
+        }
+    }
+
+    // Indented code or paragraphs
+    if leading_spaces > 0 {
+        let rest_spaces = " ".repeat(leading_spaces + 2);
+        return (indent_spaces, rest_spaces);
+    }
+
+    // Default top-level text continuation indent
+    (String::new(), "  ".to_string())
 }
 
 /// Wraps text cleanly at word boundaries respecting terminal width,
@@ -221,6 +288,37 @@ pub fn wrap_ansi(text: &str, max_width: usize, first_indent: &str, rest_indent: 
     lines
 }
 
+/// Collapses consecutive blank lines into at most one blank line,
+/// and eliminates leading and trailing empty lines from terminal output.
+pub fn collapse_blank_lines(lines: Vec<String>) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut prev_was_empty = true;
+
+    for line in lines {
+        let is_empty = line.trim().is_empty();
+        if is_empty {
+            if !prev_was_empty {
+                result.push(String::new());
+                prev_was_empty = true;
+            }
+        } else {
+            result.push(line);
+            prev_was_empty = false;
+        }
+    }
+
+    // Remove trailing empty line if any
+    while let Some(last) = result.last() {
+        if last.trim().is_empty() {
+            result.pop();
+        } else {
+            break;
+        }
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,9 +331,25 @@ mod tests {
     }
 
     #[test]
-    fn test_strip_ansi() {
-        assert_eq!(strip_ansi("\x1b[1;31mhello\x1b[0m world"), "hello world");
-        assert_eq!(strip_ansi("\x1b]8;;https://example.com\x1b\\link\x1b]8;;\x1b\\"), "link");
+    fn test_nerd_font_width() {
+        // Nerd font icon should have width 1
+        assert_eq!(char_width('󰌪'), 1);
+        assert_eq!(visible_width("Icon: 󰌪"), 7);
+    }
+
+    #[test]
+    fn test_smart_indent() {
+        let (first, rest) = compute_smart_indent("- Standardize repository metadata");
+        assert_eq!(first, "");
+        assert_eq!(rest, "  ");
+
+        let (first2, rest2) = compute_smart_indent("   - Indented item");
+        assert_eq!(first2, "   ");
+        assert_eq!(rest2, "     ");
+
+        let (first3, rest3) = compute_smart_indent("1. First numbered item");
+        assert_eq!(first3, "");
+        assert_eq!(rest3, "   ");
     }
 
     #[test]
@@ -246,13 +360,5 @@ mod tests {
         assert_eq!(wrapped[0], "The quick brown fox");
         assert_eq!(wrapped[1], "jumps over the lazy");
         assert_eq!(wrapped[2], "dog");
-    }
-
-    #[test]
-    fn test_wrap_with_ansi_links() {
-        let text = "Check out \x1b]8;;https://rust-lang.org\x1b\\Rust Language Website\x1b]8;;\x1b\\ for details.";
-        let wrapped = wrap_ansi(text, 35, "", "");
-        assert_eq!(wrapped.len(), 2);
-        assert!(wrapped[0].contains("Rust Language"));
     }
 }

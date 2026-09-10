@@ -133,6 +133,7 @@ fn output_with_pager(rendered: &str, no_pager: bool) -> io::Result<()> {
     match Command::new(pager_bin)
         .args(&pager_args)
         .env("LESSCHARSET", "utf-8")
+        .env("LESSUTFCHARDEF", "E000-F8FF:p,F0000-FFFFD:p,100000-10FFFD:p")
         .stdin(Stdio::piped())
         .spawn()
     {

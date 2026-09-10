@@ -3,7 +3,7 @@ use pulldown_cmark::{
 };
 use crate::syntax::highlight_code;
 use crate::table::TableData;
-use crate::terminal::{visible_width, wrap_ansi};
+use crate::terminal::{collapse_blank_lines, compute_smart_indent, visible_width, wrap_ansi};
 
 struct ListContext {
     is_ordered: bool,
@@ -61,7 +61,8 @@ impl MarkdownRenderer {
 
         self.flush_text_to_paragraph();
 
-        self.output.join("\n")
+        let cleaned = collapse_blank_lines(self.output);
+        cleaned.join("\n")
     }
 
     fn handle_event(&mut self, event: Event) {
@@ -298,15 +299,17 @@ impl MarkdownRenderer {
             return;
         }
 
+        let safe_width = self.term_width.saturating_sub(2);
         if let Some(marker) = self.item_marker_pending.take() {
             let marker_w = visible_width(&marker);
             let rest_indent = " ".repeat(marker_w);
-            let wrapped = wrap_ansi(trimmed, self.term_width, &marker, &rest_indent);
+            let wrapped = wrap_ansi(trimmed, safe_width, &marker, &rest_indent);
             for line in wrapped {
                 self.output.push(line);
             }
         } else {
-            let wrapped = wrap_ansi(trimmed, self.term_width, "", "");
+            let (first_indent, rest_indent) = compute_smart_indent(trimmed);
+            let wrapped = wrap_ansi(trimmed, safe_width, &first_indent, &rest_indent);
             for line in wrapped {
                 self.output.push(line);
             }
@@ -323,10 +326,12 @@ impl MarkdownRenderer {
                 // Plum banner with bold bright yellow text
                 let banner = format!(" ▊ {} ", clean_text);
                 self.output.push(format!("\x1b[1;93;48;2;36;20;50m{}\x1b[0m", banner));
+                self.output.push(String::new());
             }
             HeadingLevel::H2 => {
                 // Bold bright magenta with accent bar
                 self.output.push(format!("\x1b[1;95m▌ {}\x1b[0m", clean_text));
+                self.output.push(String::new());
             }
             HeadingLevel::H3 => {
                 // Bold bright cyan with accent bar
@@ -345,7 +350,6 @@ impl MarkdownRenderer {
                 self.output.push(format!("\x1b[1;38;2;84;160;255m{}\x1b[0m", clean_text));
             }
         }
-        self.output.push(String::new());
     }
 
     fn render_code_block(&mut self, lang: &str, code: &str) {
@@ -381,7 +385,8 @@ impl MarkdownRenderer {
                 continue;
             }
 
-            let wrapped = wrap_ansi(line_clean, content_width, "", "");
+            let (_first, rest_indent) = compute_smart_indent(line_clean);
+            let wrapped = wrap_ansi(line_clean, content_width, "", &rest_indent);
             for (w_idx, w_line) in wrapped.iter().enumerate() {
                 if w_idx == 0 {
                     self.output.push(format!("{}{:>5} {}│{} {}", num_color, line_num, border_color, reset, w_line));
