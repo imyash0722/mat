@@ -15,13 +15,14 @@ pub fn char_width(c: char) -> usize {
 }
 
 fn is_zero_width(c: char) -> bool {
-    c.is_control() || matches!(c,
-        '\u{200B}'..='\u{200F}' |
-        '\u{202A}'..='\u{202E}' |
-        '\u{2060}'..='\u{206F}' |
-        '\u{FE00}'..='\u{FE0F}' |
-        '\u{FEFF}'
-    )
+    c.is_control()
+        || matches!(c,
+            '\u{200B}'..='\u{200F}' |
+            '\u{202A}'..='\u{202E}' |
+            '\u{2060}'..='\u{206F}' |
+            '\u{FE00}'..='\u{FE0F}' |
+            '\u{FEFF}'
+        )
 }
 
 /// Computes the visual column width of a string, ignoring ANSI and OSC escape sequences.
@@ -194,13 +195,20 @@ pub fn compute_smart_indent(line: &str) -> (String, String) {
     let indent_spaces = " ".repeat(leading_spaces);
 
     // List bullets: "- ", "* ", "+ ", "• "
-    if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") || trimmed.starts_with("• ") {
+    if trimmed.starts_with("- ")
+        || trimmed.starts_with("* ")
+        || trimmed.starts_with("+ ")
+        || trimmed.starts_with("• ")
+    {
         let rest_spaces = " ".repeat(leading_spaces + 2);
         return (indent_spaces, rest_spaces);
     }
 
     // Task list markers: "- [ ] ", "- [x] ", etc.
-    if trimmed.starts_with("- [ ] ") || trimmed.starts_with("- [x] ") || trimmed.starts_with("- [X] ") {
+    if trimmed.starts_with("- [ ] ")
+        || trimmed.starts_with("- [x] ")
+        || trimmed.starts_with("- [X] ")
+    {
         let rest_spaces = " ".repeat(leading_spaces + 6);
         return (indent_spaces, rest_spaces);
     }
@@ -235,7 +243,12 @@ pub fn compute_smart_indent(line: &str) -> (String, String) {
 
 /// Wraps text cleanly at word boundaries respecting terminal width,
 /// with support for leading line indent and continuation indent.
-pub fn wrap_ansi(text: &str, max_width: usize, first_indent: &str, rest_indent: &str) -> Vec<String> {
+pub fn wrap_ansi(
+    text: &str,
+    max_width: usize,
+    first_indent: &str,
+    rest_indent: &str,
+) -> Vec<String> {
     let mut lines = Vec::new();
     let tokens = tokenize_ansi(text);
 
@@ -319,7 +332,10 @@ mod tests {
     fn test_visible_width() {
         assert_eq!(visible_width("hello"), 5);
         assert_eq!(visible_width("\x1b[1;31mhello\x1b[0m"), 5);
-        assert_eq!(visible_width("\x1b]8;;https://example.com\x1b\\Click\x1b]8;;\x1b\\"), 5);
+        assert_eq!(
+            visible_width("\x1b]8;;https://example.com\x1b\\Click\x1b]8;;\x1b\\"),
+            5
+        );
     }
 
     #[test]

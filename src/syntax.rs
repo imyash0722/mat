@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
-use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
+use syntect::util::{LinesWithEndings, as_24_bit_terminal_escaped};
 
 struct SyntaxState {
     ps: SyntaxSet,
@@ -31,7 +31,9 @@ fn get_state() -> &'static SyntaxState {
 pub fn highlight_code(code: &str, lang: &str) -> Vec<String> {
     let state = get_state();
     let syntax = if !lang.trim().is_empty() {
-        state.ps.find_syntax_by_token(lang.trim())
+        state
+            .ps
+            .find_syntax_by_token(lang.trim())
             .or_else(|| state.ps.find_syntax_by_extension(lang.trim()))
             .unwrap_or_else(|| state.ps.find_syntax_plain_text())
     } else {

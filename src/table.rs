@@ -1,5 +1,5 @@
-use pulldown_cmark::Alignment;
 use crate::terminal::visible_width;
+use pulldown_cmark::Alignment;
 
 #[derive(Debug)]
 pub struct TableData {
@@ -18,7 +18,9 @@ impl TableData {
     }
 
     pub fn render(&self, max_term_width: usize) -> Vec<String> {
-        let num_cols = self.alignments.len()
+        let num_cols = self
+            .alignments
+            .len()
             .max(self.headers.len())
             .max(self.rows.iter().map(|r| r.len()).max().unwrap_or(0));
 

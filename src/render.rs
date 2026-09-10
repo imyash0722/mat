@@ -1,9 +1,9 @@
-use pulldown_cmark::{
-    BlockQuoteKind, CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd,
-};
 use crate::syntax::highlight_code;
 use crate::table::TableData;
 use crate::terminal::{collapse_blank_lines, compute_smart_indent, visible_width, wrap_ansi};
+use pulldown_cmark::{
+    BlockQuoteKind, CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd,
+};
 
 struct ListContext {
     is_ordered: bool,
@@ -81,7 +81,10 @@ impl MarkdownRenderer {
                 let margin = "  ";
                 let divider = "─".repeat(self.term_width.saturating_sub(4));
                 self.output.push(String::new());
-                self.output.push(format!("{}\x1b[1;38;2;165;94;234m{}\x1b[0m", margin, divider));
+                self.output.push(format!(
+                    "{}\x1b[1;38;2;165;94;234m{}\x1b[0m",
+                    margin, divider
+                ));
                 self.output.push(String::new());
             }
 
@@ -144,9 +147,10 @@ impl MarkdownRenderer {
             }
             Event::End(TagEnd::TableRow) => {
                 if !self.in_table_head
-                    && let Some(table) = &mut self.table_data {
-                        table.rows.push(std::mem::take(&mut self.current_table_row));
-                    }
+                    && let Some(table) = &mut self.table_data
+                {
+                    table.rows.push(std::mem::take(&mut self.current_table_row));
+                }
             }
             Event::Start(Tag::TableCell) => {
                 self.current_cell.clear();
@@ -160,8 +164,14 @@ impl MarkdownRenderer {
             Event::Start(Tag::List(start_num)) => {
                 self.flush_text_to_paragraph();
                 match start_num {
-                    Some(num) => self.list_stack.push(ListContext { is_ordered: true, current_index: num }),
-                    None => self.list_stack.push(ListContext { is_ordered: false, current_index: 1 }),
+                    Some(num) => self.list_stack.push(ListContext {
+                        is_ordered: true,
+                        current_index: num,
+                    }),
+                    None => self.list_stack.push(ListContext {
+                        is_ordered: false,
+                        current_index: 1,
+                    }),
                 }
             }
             Event::End(TagEnd::List(_)) => {
@@ -178,7 +188,10 @@ impl MarkdownRenderer {
 
                 if let Some(ctx) = self.list_stack.last_mut() {
                     if ctx.is_ordered {
-                        let marker = format!("  {}\x1b[38;2;72;219;251m{}.\x1b[0m ", indent, ctx.current_index);
+                        let marker = format!(
+                            "  {}\x1b[38;2;72;219;251m{}.\x1b[0m ",
+                            indent, ctx.current_index
+                        );
                         ctx.current_index += 1;
                         self.item_marker_pending = Some(marker);
                     } else {
@@ -320,32 +333,38 @@ impl MarkdownRenderer {
             HeadingLevel::H1 => {
                 // Plum banner with bold bright yellow text
                 let banner = format!(" ▊ {} ", clean_text);
-                self.output.push(format!("  \x1b[1;93;48;2;36;20;50m{}\x1b[0m", banner));
+                self.output
+                    .push(format!("  \x1b[1;93;48;2;36;20;50m{}\x1b[0m", banner));
                 self.output.push(String::new());
             }
             HeadingLevel::H2 => {
                 // Bold bright magenta with accent bar
-                self.output.push(format!("  \x1b[1;95m▌ {}\x1b[0m", clean_text));
+                self.output
+                    .push(format!("  \x1b[1;95m▌ {}\x1b[0m", clean_text));
                 self.output.push(String::new());
             }
             HeadingLevel::H3 => {
                 // Bold bright cyan with accent bar
-                self.output.push(format!("  \x1b[1;96m▎ {}\x1b[0m", clean_text));
+                self.output
+                    .push(format!("  \x1b[1;96m▎ {}\x1b[0m", clean_text));
                 self.output.push(String::new());
             }
             HeadingLevel::H4 => {
                 // Bold emerald green
-                self.output.push(format!("  \x1b[1;92m{}\x1b[0m", clean_text));
+                self.output
+                    .push(format!("  \x1b[1;92m{}\x1b[0m", clean_text));
                 self.output.push(String::new());
             }
             HeadingLevel::H5 => {
                 // Bold warm amber/orange
-                self.output.push(format!("  \x1b[1;38;2;255;159;67m{}\x1b[0m", clean_text));
+                self.output
+                    .push(format!("  \x1b[1;38;2;255;159;67m{}\x1b[0m", clean_text));
                 self.output.push(String::new());
             }
             HeadingLevel::H6 => {
                 // Bold cornflower blue
-                self.output.push(format!("  \x1b[1;38;2;84;160;255m{}\x1b[0m", clean_text));
+                self.output
+                    .push(format!("  \x1b[1;38;2;84;160;255m{}\x1b[0m", clean_text));
                 self.output.push(String::new());
             }
         }
@@ -368,7 +387,10 @@ impl MarkdownRenderer {
         self.output.push(String::new());
 
         if !lang_trimmed.is_empty() {
-            let lang_tag = format!(" \x1b[1;38;2;165;94;234m{}\x1b[0m{} ", lang_trimmed, border_color);
+            let lang_tag = format!(
+                " \x1b[1;38;2;165;94;234m{}\x1b[0m{} ",
+                lang_trimmed, border_color
+            );
             let lang_vis = lang_trimmed.len() + 2;
             let top_fill = block_width.saturating_sub((num_digits + 2) + 3 + lang_vis);
             self.output.push(format!(
@@ -438,11 +460,7 @@ impl MarkdownRenderer {
                 } else {
                     self.output.push(format!(
                         "{}{} {}│{} {}",
-                        margin,
-                        continuation_prefix,
-                        border_color,
-                        reset,
-                        w_line
+                        margin, continuation_prefix, border_color, reset, w_line
                     ));
                 }
             }
@@ -485,7 +503,14 @@ impl MarkdownRenderer {
                 let top_fill = box_width.saturating_sub(6 + title_vis);
 
                 self.output.push(String::new());
-                self.output.push(format!("{}{}\x1b[1m╭─ {} ─{}╮{}", margin, color, icon_title, "─".repeat(top_fill), reset));
+                self.output.push(format!(
+                    "{}{}\x1b[1m╭─ {} ─{}╮{}",
+                    margin,
+                    color,
+                    icon_title,
+                    "─".repeat(top_fill),
+                    reset
+                ));
 
                 let content_width = box_width.saturating_sub(6);
 
@@ -494,18 +519,37 @@ impl MarkdownRenderer {
                     for wline in wrapped {
                         let wline_vis = visible_width(&wline);
                         let pad_right = content_width.saturating_sub(wline_vis);
-                        self.output.push(format!("{}{}\x1b[1m│\x1b[0m  {}{}  {}\x1b[1m│{}", margin, color, wline, " ".repeat(pad_right), color, reset));
+                        self.output.push(format!(
+                            "{}{}\x1b[1m│\x1b[0m  {}{}  {}\x1b[1m│{}",
+                            margin,
+                            color,
+                            wline,
+                            " ".repeat(pad_right),
+                            color,
+                            reset
+                        ));
                     }
                 }
 
-                self.output.push(format!("{}{}\x1b[1m╰{}╯{}", margin, color, "─".repeat(box_width.saturating_sub(2)), reset));
+                self.output.push(format!(
+                    "{}{}\x1b[1m╰{}╯{}",
+                    margin,
+                    color,
+                    "─".repeat(box_width.saturating_sub(2)),
+                    reset
+                ));
                 self.output.push(String::new());
             }
             BlockQuoteContext::Standard => {
                 self.output.push(String::new());
                 let quote_bar = format!("{}\x1b[38;2;253;203;110m│ \x1b[0m\x1b[3m", margin);
                 for block in lines {
-                    let wrapped = wrap_ansi(&block, self.term_width.saturating_sub(6), &quote_bar, &quote_bar);
+                    let wrapped = wrap_ansi(
+                        &block,
+                        self.term_width.saturating_sub(6),
+                        &quote_bar,
+                        &quote_bar,
+                    );
                     for wline in wrapped {
                         self.output.push(format!("{}\x1b[0m", wline));
                     }
@@ -528,7 +572,8 @@ mod tests {
 
     #[test]
     fn test_render_alert_and_tasks() {
-        let md = "# Heading 1\n\n> [!NOTE]\n> This is a note.\n\n- **Status:** [ ] Pending\n- [x] Done";
+        let md =
+            "# Heading 1\n\n> [!NOTE]\n> This is a note.\n\n- **Status:** [ ] Pending\n- [x] Done";
         let renderer = MarkdownRenderer::new(80);
         let output = renderer.render(md);
         assert!(output.contains("NOTE"));

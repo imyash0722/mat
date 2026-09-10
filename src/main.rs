@@ -45,7 +45,10 @@ fn print_completions(shell: &str) {
         "fish" => print!("{}", include_str!("../completions/fish/mdview.fish")),
         "bash" => print!("{}", include_str!("../completions/bash/mdview.bash")),
         other => {
-            eprintln!("Error: Unsupported shell '{}'. Supported shells: zsh, fish, bash", other);
+            eprintln!(
+                "Error: Unsupported shell '{}'. Supported shells: zsh, fish, bash",
+                other
+            );
             std::process::exit(1);
         }
     }
@@ -72,7 +75,10 @@ fn parse_args() -> Result<CliArgs, String> {
                     print_completions(&shell);
                     std::process::exit(0);
                 } else {
-                    return Err("Option '--completions' requires a shell name (zsh, fish, bash)".to_string());
+                    return Err(
+                        "Option '--completions' requires a shell name (zsh, fish, bash)"
+                            .to_string(),
+                    );
                 }
             }
             s if s.starts_with("--completions=") => {
@@ -197,7 +203,10 @@ fn output_with_pager(rendered: &str, no_pager: bool) -> io::Result<()> {
     match Command::new(pager_bin)
         .args(&pager_args)
         .env("LESSCHARSET", "utf-8")
-        .env("LESSUTFCHARDEF", "E000-F8FF:p,F0000-FFFFD:p,100000-10FFFD:p")
+        .env(
+            "LESSUTFCHARDEF",
+            "E000-F8FF:p,F0000-FFFFD:p,100000-10FFFD:p",
+        )
         .stdin(Stdio::piped())
         .spawn()
     {
