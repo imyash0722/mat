@@ -30,7 +30,7 @@ ARGS:
 
 OPTIONS:
     -p, --no-pager               Do not pipe output into a pager
-    -w, --width <COLS>           Override terminal display width
+    -w, --width <COLS>           Override display width (0 for full terminal width)
     -c, --completions <SHELL>    Generate shell completion script (zsh, fish, bash)
     -v, -V, --version            Print version information
     -h, --help                   Print help information
@@ -126,19 +126,76 @@ fn parse_args() -> Result<CliArgs, String> {
     })
 }
 
-fn get_terminal_width(custom_width: Option<usize>) -> usize {
-    if let Some(w) = custom_width {
-        return w.max(20);
-    }
-    if let Some((terminal_size::Width(w), _)) = terminal_size() {
-        return (w as usize).max(20);
-    }
-    if let Ok(cols) = env::var("COLUMNS")
+const DEFAULT_MAX_WIDTH: usize = 100;
+
+struct Layout {
+    content_width: usize,
+    left_pad: usize,
+}
+
+fn compute_layout(custom_width: Option<usize>) -> Layout {
+    let actual_term_width = if let Some((terminal_size::Width(w), _)) = terminal_size() {
+        w as usize
+    } else if let Ok(cols) = env::var("COLUMNS")
         && let Ok(w) = cols.parse::<usize>()
     {
-        return w.max(20);
+        w
+    } else {
+        80
+    };
+
+    let is_term = io::stdout().is_terminal();
+
+    if let Some(custom) = custom_width {
+        if custom == 0 {
+            // Explicitly requested full uncapped terminal width
+            return Layout {
+                content_width: actual_term_width.max(20),
+                left_pad: 0,
+            };
+        }
+        let content_width = custom.min(actual_term_width).max(20);
+        let left_pad = if is_term {
+            (actual_term_width.saturating_sub(content_width)) / 2
+        } else {
+            0
+        };
+        return Layout {
+            content_width,
+            left_pad,
+        };
     }
-    80
+
+    // Default: cap content width at DEFAULT_MAX_WIDTH (100 cols) and center it
+    let content_width = actual_term_width.clamp(40, DEFAULT_MAX_WIDTH);
+    let left_pad = if is_term {
+        (actual_term_width.saturating_sub(content_width)) / 2
+    } else {
+        0
+    };
+
+    Layout {
+        content_width,
+        left_pad,
+    }
+}
+
+fn apply_centering(text: &str, left_pad: usize) -> String {
+    if left_pad == 0 {
+        return text.to_string();
+    }
+    let pad = " ".repeat(left_pad);
+    let mut result = String::with_capacity(text.len() + left_pad * 30);
+    for (i, line) in text.split('\n').enumerate() {
+        if i > 0 {
+            result.push('\n');
+        }
+        if !line.is_empty() {
+            result.push_str(&pad);
+            result.push_str(line);
+        }
+    }
+    result
 }
 
 fn format_bat_header(path: &str, width: usize) -> String {
@@ -260,21 +317,23 @@ fn main() {
         },
     };
 
-    let term_width = get_terminal_width(args.width);
-    let renderer = render::MarkdownRenderer::new(term_width);
+    let layout = compute_layout(args.width);
+    let renderer = render::MarkdownRenderer::new(layout.content_width);
     let rendered = renderer.render(&content);
 
     let file_path = args.file.as_deref().filter(|p| *p != "-");
     let mut full_output = String::new();
     if let Some(path) = file_path {
-        full_output.push_str(&format_bat_header(path, term_width));
+        full_output.push_str(&format_bat_header(path, layout.content_width));
     }
     full_output.push_str(&rendered);
     if file_path.is_some() {
-        full_output.push_str(&format_bat_footer(term_width));
+        full_output.push_str(&format_bat_footer(layout.content_width));
     }
 
-    if let Err(e) = output_with_pager(&full_output, args.no_pager)
+    let centered_output = apply_centering(&full_output, layout.left_pad);
+
+    if let Err(e) = output_with_pager(&centered_output, args.no_pager)
         && e.kind() != io::ErrorKind::BrokenPipe
     {
         eprintln!("Error writing output: {}", e);
