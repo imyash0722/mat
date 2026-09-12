@@ -14,7 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Interactive Forward & Backward Search**: Regex-free text search (`/pattern`, `?pattern`) with match counter and navigation (`n`/`N`).
 - **Smooth Touchpad & Mouse Wheel Scrolling**: Native vertical scrolling support for mouse wheels and precision trackpads.
 - **Neovim Statusline**: Bottom status bar displaying active mode (`[NORMAL]`, `[COMMAND]`, `[SEARCH]`), file name, reading progress percentage, and line position (`[Line X/Y]`).
-- **In-App Interactive Cheat Sheet**: Modal help overlay accessible via `:help` or `F1`.
+### Changed
+- **Terminal-Synced Statusline**: Replaced hardcoded RGB colors in status bar with universal Reverse Video (`\x1b[7m`) and standard ANSI attributes, syncing seamlessly with any terminal palette (dark, light, Catppuccin, Gruvbox, etc.).
+- **Interactive Cursor**: Position and show cursor dynamically during `:` command and `/` search input, while keeping it hidden in normal mode.
+
+### Fixed
+- **BCE Background Color Bleed**: Solved horizontal color bleed stripes caused by unclosed ANSI background sequences when erasing to end-of-line (`\x1b[K`).
+- **Style Tracking Across Line Wrapping**: Fixed `wrap_ansi` and `tokenize_ansi` so wrapped lines cleanly close active ANSI styles with `\x1b[0m` and restore them at the beginning of continuation lines.
+- **Inline Code Background Compatibility**: Removed hardcoded dark slate background from inline code, displaying clean syntax-colored text that remains readable across all terminal themes.
 
 ## [1.1.0] - 2026-09-10
 

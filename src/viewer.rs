@@ -546,11 +546,12 @@ impl<'a> Viewer<'a> {
             if line_idx < total_lines {
                 out.push_str(&self.lines[line_idx]);
             } else {
-                // Past EOF: print Neovim/Vim '~'
-                out.push_str("\x1b[38;2;80;80;110m~\x1b[0m");
+                // Past EOF: print Neovim/Vim '~' using terminal dim text
+                out.push_str("\x1b[2m~\x1b[0m");
             }
             // Clear rest of line and move to next
-            out.push_str("\x1b[K\r\n");
+            // ALWAYS reset SGR styling first so BCE (Background Color Erase) never erases with an active background color!
+            out.push_str("\x1b[0m\x1b[K\r\n");
         }
 
         // Render Neovim statusline on bottom row
@@ -559,6 +560,29 @@ impl<'a> Viewer<'a> {
         // Draw Help overlay if active
         if matches!(self.input_mode, InputMode::Help) {
             out.push_str(&self.render_help_overlay());
+        }
+
+        // Cursor visibility: show when typing a command or search, hide in normal mode
+        match &self.input_mode {
+            InputMode::Command { buffer } => {
+                let cursor_x = (1 + buffer.len()).min(self.term_cols.saturating_sub(1));
+                out.push_str(&format!(
+                    "{}{}",
+                    MoveTo(cursor_x as u16, viewport_h as u16),
+                    Show
+                ));
+            }
+            InputMode::Search { buffer, .. } => {
+                let cursor_x = (1 + buffer.len()).min(self.term_cols.saturating_sub(1));
+                out.push_str(&format!(
+                    "{}{}",
+                    MoveTo(cursor_x as u16, viewport_h as u16),
+                    Show
+                ));
+            }
+            _ => {
+                out.push_str(&format!("{}", Hide));
+            }
         }
 
         let mut stdout_handle = stdout().lock();
@@ -584,50 +608,30 @@ impl<'a> Viewer<'a> {
 
         match &self.input_mode {
             InputMode::Command { buffer } => {
-                format!(
-                    "\x1b[1;38;2;254;202;87;48;2;40;40;60m:{} \x1b[0m\x1b[K",
-                    buffer
-                )
+                format!(":{}\x1b[0m\x1b[K", buffer)
             }
             InputMode::Search { buffer, reverse } => {
                 let prefix = if *reverse { "?" } else { "/" };
-                format!(
-                    "\x1b[1;38;2;72;219;251;48;2;40;40;60m{}{} \x1b[0m\x1b[K",
-                    prefix, buffer
-                )
+                format!("{}{}\x1b[0m\x1b[K", prefix, buffer)
             }
             _ => {
                 if let Some(ref msg) = self.status_message {
-                    return format!(
-                        "\x1b[1;38;2;255;107;107;48;2;30;30;46m {} \x1b[0m\x1b[K",
-                        msg
-                    );
+                    return format!("\x1b[7m\x1b[1m {} \x1b[0m\x1b[K", msg);
                 }
 
-                let mode_badge = "\x1b[1;38;2;20;20;35;48;2;165;94;234m NORMAL \x1b[0m";
-                let file_info = format!(
-                    " \x1b[38;2;220;221;225;48;2;45;45;65m {} \x1b[0m",
-                    file_name
-                );
-                let pos_info = format!(
-                    "\x1b[38;2;180;180;200;48;2;35;35;50m {}  [Line {}/{}] \x1b[0m",
-                    pct_str, current_line, total_lines
-                );
+                let mode_str = " NORMAL ";
+                let file_str = format!(" {} ", file_name);
+                let pos_str = format!(" {}  [Line {}/{}] ", pct_str, current_line, total_lines);
 
-                let badge_w = 8;
-                let file_w = file_name.len() + 2;
-                let pos_w = pct_str.len()
-                    + 2
-                    + 7
-                    + current_line.to_string().len()
-                    + 1
-                    + total_lines.to_string().len()
-                    + 3;
+                let visible_w = mode_str.len() + file_str.len() + pos_str.len();
+                let gap = self.term_cols.saturating_sub(visible_w);
+                let filler = " ".repeat(gap);
 
-                let gap = self.term_cols.saturating_sub(badge_w + file_w + pos_w);
-                let filler = format!("\x1b[48;2;35;35;50m{}\x1b[0m", " ".repeat(gap));
-
-                format!("{}{}{}{}\x1b[K", mode_badge, file_info, filler, pos_info)
+                // Full statusline rendered in reverse video (\x1b[7m), syncing natively with any terminal theme
+                format!(
+                    "\x1b[7m\x1b[1m{}\x1b[22m{}{}{}\x1b[0m\x1b[K",
+                    mode_str, file_str, filler, pos_str
+                )
             }
         }
     }
@@ -666,7 +670,7 @@ impl<'a> Viewer<'a> {
             let row = start_y + idx;
             let col = start_x;
             out.push_str(&format!(
-                "{}\x1b[1;38;2;254;202;87;48;2;25;25;40m{}\x1b[0m",
+                "{}\x1b[7m\x1b[1m{}\x1b[0m",
                 MoveTo(col as u16, row as u16),
                 line
             ));

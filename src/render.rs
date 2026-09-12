@@ -247,7 +247,7 @@ impl MarkdownRenderer {
 
             // Inline code
             Event::Code(code) => {
-                let mut formatted = format!("\x1b[38;2;255;107;107;48;2;30;30;46m{}\x1b[0m", code);
+                let mut formatted = format!("\x1b[38;2;255;107;107m{}\x1b[0m", code);
                 // If inside active link, restore link styling after code reset
                 if self.in_link {
                     formatted.push_str("\x1b[4;38;2;0;210;211m");

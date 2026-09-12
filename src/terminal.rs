@@ -117,6 +117,18 @@ fn tokenize_ansi(s: &str) -> Vec<Token> {
 
     while let Some(c) = chars.next() {
         if c == '\x1b' {
+            // If we were accumulating whitespace, finish that whitespace token first!
+            // The ANSI sequence belongs to the following non-whitespace token or styled text.
+            if in_whitespace == Some(true) && !current_raw.is_empty() {
+                tokens.push(Token {
+                    raw: std::mem::take(&mut current_raw),
+                    visible_width: current_width,
+                    is_whitespace: true,
+                });
+                current_width = 0;
+                in_whitespace = Some(false);
+            }
+
             // Collect ANSI escape sequence into current token
             let mut seq = String::from("\x1b");
             match chars.next() {
@@ -181,9 +193,80 @@ fn tokenize_ansi(s: &str) -> Vec<Token> {
     tokens
 }
 
-/// Trims trailing whitespace from the end of a line.
+/// Trims trailing whitespace from the end of a line, preserving trailing ANSI reset sequences.
 fn trim_trailing_ansi_spaces(s: &str) -> String {
-    s.trim_end_matches([' ', '\t']).to_string()
+    let mut s_trimmed = s.to_string();
+    let mut trailing_ansi = String::new();
+    loop {
+        let before_len = s_trimmed.len();
+        let trimmed = s_trimmed.trim_end_matches([' ', '\t']);
+        if trimmed.len() != s_trimmed.len() {
+            s_trimmed = trimmed.to_string();
+        }
+        if let Some(pos) = s_trimmed.rfind('\x1b') {
+            let candidate = &s_trimmed[pos..];
+            if (candidate.ends_with('m')
+                || candidate.ends_with('\\')
+                || candidate.ends_with('\x07'))
+                && visible_width(candidate) == 0
+            {
+                trailing_ansi.insert_str(0, candidate);
+                s_trimmed.truncate(pos);
+            }
+        }
+        if s_trimmed.len() == before_len {
+            break;
+        }
+    }
+    s_trimmed.push_str(&trailing_ansi);
+    s_trimmed
+}
+
+fn update_active_styles(raw: &str, active_sgr: &mut String, active_osc: &mut Option<String>) {
+    let mut chars = raw.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            match chars.next() {
+                Some('[') => {
+                    let mut sgr = String::from("\x1b[");
+                    for next_c in chars.by_ref() {
+                        sgr.push(next_c);
+                        if ('\x40'..='\x7e').contains(&next_c) {
+                            break;
+                        }
+                    }
+                    if sgr.ends_with('m') {
+                        if sgr == "\x1b[0m" || sgr == "\x1b[m" {
+                            active_sgr.clear();
+                        } else {
+                            active_sgr.push_str(&sgr);
+                        }
+                    }
+                }
+                Some(']') => {
+                    let mut osc = String::from("\x1b]");
+                    while let Some(next_c) = chars.next() {
+                        osc.push(next_c);
+                        if next_c == '\x07' {
+                            break;
+                        }
+                        if next_c == '\x1b' && chars.peek() == Some(&'\\') {
+                            osc.push(chars.next().unwrap());
+                            break;
+                        }
+                    }
+                    if osc.starts_with("\x1b]8;;") {
+                        if osc == "\x1b]8;;\x1b\\" || osc == "\x1b]8;;\x07" {
+                            *active_osc = None;
+                        } else {
+                            *active_osc = Some(osc);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
 /// Analyzes a line's visible structure (leading spaces, list markers, numbers)
@@ -260,7 +343,12 @@ pub fn wrap_ansi(
     let mut is_first_line = true;
     let mut has_content_on_line = false;
 
+    let mut active_sgr = String::new();
+    let mut active_osc: Option<String> = None;
+
     for token in tokens {
+        update_active_styles(&token.raw, &mut active_sgr, &mut active_osc);
+
         if token.is_whitespace {
             if !has_content_on_line {
                 continue;
@@ -270,8 +358,22 @@ pub fn wrap_ansi(
         } else {
             let limit = max_width;
             if has_content_on_line && current_line_width + token.visible_width > limit {
-                lines.push(trim_trailing_ansi_spaces(&current_line));
+                let mut finished = trim_trailing_ansi_spaces(&current_line);
+                if active_osc.is_some() {
+                    finished.push_str("\x1b]8;;\x1b\\");
+                }
+                if !active_sgr.is_empty() {
+                    finished.push_str("\x1b[0m");
+                }
+                lines.push(finished);
+
                 current_line = String::from(rest_indent);
+                if let Some(ref osc) = active_osc {
+                    current_line.push_str(osc);
+                }
+                if !active_sgr.is_empty() {
+                    current_line.push_str(&active_sgr);
+                }
                 current_line_width = rest_indent_width;
                 is_first_line = false;
             }
@@ -283,7 +385,14 @@ pub fn wrap_ansi(
     }
 
     if has_content_on_line || (is_first_line && !current_line.is_empty()) {
-        lines.push(trim_trailing_ansi_spaces(&current_line));
+        let mut finished = trim_trailing_ansi_spaces(&current_line);
+        if active_osc.is_some() {
+            finished.push_str("\x1b]8;;\x1b\\");
+        }
+        if !active_sgr.is_empty() {
+            finished.push_str("\x1b[0m");
+        }
+        lines.push(finished);
     }
 
     if lines.is_empty() {
@@ -372,5 +481,20 @@ mod tests {
         assert_eq!(wrapped[0], "The quick brown fox");
         assert_eq!(wrapped[1], "jumps over the lazy");
         assert_eq!(wrapped[2], "dog");
+    }
+
+    #[test]
+    fn test_wrap_ansi_styled_split() {
+        let text = "Prefix \x1b[31mred text that wraps across lines\x1b[0m suffix";
+        let wrapped = wrap_ansi(text, 15, "", "");
+        for line in &wrapped {
+            let plain = strip_ansi(line);
+            assert!(plain.len() <= 15);
+        }
+        // First line must close with reset
+        assert!(wrapped[0].ends_with("\x1b[0m"));
+        // Continuation line must restore active red color
+        assert!(wrapped[1].starts_with("\x1b[31m"));
+        assert!(wrapped[1].ends_with("\x1b[0m"));
     }
 }
