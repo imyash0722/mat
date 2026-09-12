@@ -1,7 +1,13 @@
 local M = {}
 
 M.defaults = {
-  binary = nil, -- custom path to mat binary (optional, auto-detected if nil)
+  binary = nil, -- custom path to mat backend binary (optional, auto-detected if nil)
+  auto_preview = false, -- automatically enter preview mode when opening a .md file
+  keymaps = {
+    toggle = "<leader>mp", -- Toggle between Preview Mode and Edit Mode in-place
+    split = "<leader>ms",  -- Open live side-by-side preview split
+    float = "<leader>mv",  -- Open interactive floating preview modal
+  },
   float = {
     width = 0.85,       -- width ratio of editor (0.1 - 1.0)
     height = 0.85,      -- height ratio of editor (0.1 - 1.0)
@@ -11,10 +17,6 @@ M.defaults = {
     width = 0.45,       -- split width ratio (0.1 - 1.0)
     auto_update = true, -- live re-render on buffer save
     debounce_ms = 150,  -- debounce delay in milliseconds
-  },
-  keymaps = {
-    float = "<leader>mv",
-    preview = "<leader>mp",
   },
 }
 
@@ -27,7 +29,6 @@ function M.get_plugin_root()
   if info:sub(1, 1) == "@" then
     info = info:sub(2)
   end
-  -- config.lua is located at lua/mat/config.lua -> up 3 directory levels to repo root
   return vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(info)))
 end
 

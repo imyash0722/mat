@@ -1,5 +1,6 @@
 local config = require("mat.config")
 local preview = require("mat.preview")
+local toggle = require("mat.toggle")
 
 local M = {}
 
@@ -9,19 +10,62 @@ M.setup = function(opts)
   -- Setup keymaps if configured
   local keymaps = config.options.keymaps
   if keymaps then
+    -- In-place preview/edit mode toggle
+    if keymaps.toggle and keymaps.toggle ~= "" then
+      vim.keymap.set("n", keymaps.toggle, function()
+        M.toggle()
+      end, { desc = "Toggle Markdown Preview / Edit Mode", silent = true })
+    end
+
+    -- Floating preview modal
     if keymaps.float and keymaps.float ~= "" then
       vim.keymap.set("n", keymaps.float, function()
         M.open()
       end, { desc = "Markdown Preview (Float)", silent = true })
     end
-    if keymaps.preview and keymaps.preview ~= "" then
-      vim.keymap.set("n", keymaps.preview, function()
+
+    -- Side-by-side split live preview
+    if keymaps.split and keymaps.split ~= "" then
+      vim.keymap.set("n", keymaps.split, function()
         preview.toggle()
       end, { desc = "Markdown Live Preview (Split)", silent = true })
     end
   end
+
+  -- Auto-preview on opening .md files if enabled
+  if config.options.auto_preview then
+    toggle.setup_auto_preview()
+  end
 end
 
+---Toggle in-place between Preview Mode and Edit Mode in current window
+---@param win? integer
+M.toggle = function(win)
+  toggle.toggle(win)
+end
+
+---Switch in-place to Preview Mode in current window
+---@param win? integer
+M.preview_mode = function(win)
+  toggle.to_preview_mode(win)
+end
+
+---Switch in-place back to Edit Mode in current window
+---@param win? integer
+---@param opts? { insert?: boolean, append?: boolean }
+M.edit_mode = function(win, opts)
+  toggle.to_edit_mode(win, opts)
+end
+
+---Check if window is currently in Preview Mode
+---@param win? integer
+---@return boolean
+M.is_preview_mode = function(win)
+  return toggle.is_preview_mode(win)
+end
+
+---Open interactive floating preview modal
+---@param opts? { file?: string }
 M.open = function(opts)
   opts = opts or {}
   local binary = config.get_binary()
@@ -93,6 +137,8 @@ M.open = function(opts)
   vim.keymap.set("n", "q", close_fn, { buffer = buf, nowait = true })
 end
 
+---Render visual selection in a floating card
+---@param lines string[]
 M.open_snippet = function(lines)
   local binary = config.get_binary()
   if not binary then
@@ -148,18 +194,29 @@ M.open_snippet = function(lines)
   vim.keymap.set("n", "q", close_fn, { buffer = buf, nowait = true })
 end
 
+---Open live side-by-side split preview
+---@param opts? { buf?: integer }
 M.preview = function(opts)
   preview.open(opts and opts.buf)
 end
 
+---Toggle live side-by-side split preview
 M.preview_toggle = function()
   preview.toggle()
 end
 
+---Close active preview (either in-place or split)
 M.close = function()
-  preview.close()
+  local win = vim.api.nvim_get_current_win()
+  if toggle.is_preview_mode(win) then
+    toggle.to_edit_mode(win)
+  end
+  if preview.is_open() then
+    preview.close()
+  end
 end
 
+---Compile backend binary via cargo
 M.build = function()
   local root = config.get_plugin_root()
   if vim.fn.executable("cargo") ~= 1 then

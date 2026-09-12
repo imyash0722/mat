@@ -6,22 +6,49 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org/)
 
-> **A blazingly fast terminal Markdown preview plugin for Neovim powered by a sub-5ms Rust engine.**  
-> Zero browser overhead, zero Node.js/Python runtimes. Experience high-fidelity Markdown preview—with TrueColor syntax highlighting, GitHub Flavored Markdown (GFM) callouts and tables, bat-style framing, and interactive navigation—directly inside your terminal Neovim.
+> **A blazingly fast in-editor Markdown preview plugin for Neovim powered by a sub-5ms Rust engine.**  
+> Seamlessly flip between **Preview Mode** and **Edit Mode** with a single keystroke. Zero browser overhead, zero Node.js/Python runtimes. Experience high-fidelity Markdown preview—with TrueColor syntax highlighting, GitHub Flavored Markdown (GFM) callouts and tables, bat-style framing, and interactive navigation—directly inside your terminal Neovim.
+
+---
+
+## ⚡ The Killer Feature: Instant Preview ⇄ Edit Toggle
+
+When editing any `.md` file in Neovim, toggle between **rendered preview** and your **normal editor** with a single shortcut:
+
+```
+                  ┌──────────────────────────────┐
+                  │   Normal Neovim Edit Mode    │
+                  │   (Raw Markdown Buffer)      │
+                  └──────────────┬───────────────┘
+                                 │
+                   <leader>mp    │    <leader>mp
+                   or :Mat       │    or 'i' to edit
+                                 ▼
+                  ┌──────────────────────────────┐
+                  │    Rendered Preview Mode     │
+                  │ (mat TrueColor ANSI Engine)  │
+                  └──────────────────────────────┘
+```
+
+1. **In Edit Mode:** Hit `<leader>mp` (or run `:Mat`). If the file is a `.md`, `mat` instantly renders the document in-place in your current window with full TrueColor formatting, tables, code blocks, and alerts.
+2. **In Preview Mode:** Hit `<leader>mp` again—or simply press **`i`** to start inserting or **`e`** to edit—and you are immediately back in the normal Neovim editor with your cursor placed right where you were reading!
+3. **Unsaved Edits Supported:** Previews live in-memory buffer changes instantly without forcing you to write (`:w`) first.
+4. **Filetype Guarded:** Automatically protects non-markdown files from unintended toggles.
 
 ---
 
 ## ✨ Features
 
-- **🚀 Sub-5ms Startup Latency:** Built with a standalone Rust core (`pulldown-cmark` SIMD & `syntect`). Renders instantly without browser spinning or Node/Python bloat.
-- **🪟 Interactive Floating Preview Modal (`:Mat`):** Centered floating popup with full Vim navigation (`j`/`k`, `Ctrl+d`/`u`, `gg`/`G`, `/` search), smooth trackpad/mouse wheel scrolling, and instant dismiss with `q`.
-- **🔄 Live Side-by-Side Split (`:MatPreview`):** Vertical split preview (`:vsplit`) that automatically updates whenever you save (`:w`) using zero-flicker atomic buffer swapping.
-- **✂️ Visual Snippet Preview (`:'<,'>Mat`):** Highlight any Markdown lines or docstrings in visual mode and preview just that selection in a floating card.
+- **🚀 Sub-5ms Startup Latency:** Built with a standalone Rust core (`pulldown-cmark` SIMD & `syntect`). Renders in ~4ms with zero browser or Node/Python bloat.
+- **🔄 In-Place Preview ⇄ Edit Switch (`:Mat` / `:MatToggle`):** Flip your current window between rendered reading mode and normal editing mode. Press `i` to jump straight into editing.
+- **🪟 Interactive Floating Modal (`:MatFloat`):** Centered floating popup with full Vim navigation (`j`/`k`, `Ctrl+d`/`u`, `gg`/`G`, `/` search), smooth trackpad/mouse wheel scrolling, and instant dismiss with `q`.
+- **📑 Side-by-Side Live Split (`:MatSplit`):** Vertical split preview (`:vsplit`) that automatically updates whenever you save (`:w`) using zero-flicker atomic buffer swapping.
+- **✂️ Visual Snippet Preview (`:'<,'>Mat`):** Highlight any Markdown lines or docstrings in visual mode and preview just that selection in a popup card.
 - **🎨 Native Terminal Theme Sync:** Reverse video statusline (`\x1b[7m`) and adaptive ANSI attributes that automatically sync with whatever colorscheme or terminal palette you use.
 - **🖼️ `bat`-Style Framed Views:** Clean header borders and contained code fence grids with language badges, TrueColor syntax highlighting, and dimmed line numbers.
 - **✨ Full GitHub Flavored Markdown (GFM):**
   - **Alerts / Callouts:** Rounded Unicode panels for `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, and `[!CAUTION]`.
-  - **Tables:** Full Unicode box-drawing borders (`┌`, `┬`, `┐`, `│`, `├`, `┼`, `┤`, `└`, `┴`, `┘`) with proportional column auto-scaling to fit split widths.
+  - **Tables:** Full Unicode box-drawing borders (`┌`, `┬`, `┐`, `│`, `├`, `┼`, `┤`, `└`, `┴`, `┘`) with proportional column auto-scaling.
   - **Task Lists:** Renders `[ ]` as `☐` and `[x]` as bright green `✔`.
   - **Clickable Links:** Native terminal OSC 8 hyperlinks.
 - **📐 Responsive Column Wrapping:** Automatically detects the split or modal column width and reformats text, tables, and borders cleanly.
@@ -38,20 +65,27 @@
   "imyash0722/mat",
   build = "cargo build --release",
   ft = { "markdown", "md" },
-  cmd = { "Mat", "MatPreview", "MatPreviewToggle", "MatClose", "MatBuild" },
+  cmd = { "Mat", "MatToggle", "MatPreview", "MatEdit", "MatSplit", "MatFloat", "MatClose", "MatBuild" },
   keys = {
-    { "<leader>mv", "<cmd>Mat<cr>", desc = "Markdown Preview (Float)" },
-    { "<leader>mp", "<cmd>MatPreviewToggle<cr>", desc = "Markdown Live Preview (Split)" },
+    { "<leader>mp", "<cmd>MatToggle<cr>", desc = "Toggle Markdown Preview / Edit Mode" },
+    { "<leader>mv", "<cmd>MatFloat<cr>", desc = "Markdown Preview (Float Modal)" },
+    { "<leader>ms", "<cmd>MatSplit<cr>", desc = "Markdown Live Preview (Side Split)" },
   },
   opts = {
+    auto_preview = false, -- Set to true to automatically open .md files in Preview Mode
+    keymaps = {
+      toggle = "<leader>mp", -- In-place preview/edit toggle shortcut
+      float = "<leader>mv",  -- Floating modal shortcut
+      split = "<leader>ms",  -- Side-by-side split shortcut
+    },
     float = {
-      width = 0.85,       -- float width ratio (85% of editor)
-      height = 0.85,      -- float height ratio
-      border = "rounded", -- "rounded" | "single" | "double" | "shadow"
+      width = 0.85,          -- Float width ratio (85% of editor)
+      height = 0.85,         -- Float height ratio
+      border = "rounded",    -- "rounded" | "single" | "double" | "shadow"
     },
     preview = {
-      width = 0.45,       -- split width ratio (45% of editor)
-      auto_update = true, -- live re-render on buffer save
+      width = 0.45,          -- Side split width ratio (45% of editor)
+      auto_update = true,    -- Live re-render on buffer save
     },
   },
 }
@@ -78,72 +112,72 @@ Plug 'imyash0722/mat', { 'do': 'cargo build --release', 'for': ['markdown', 'md'
 
 ---
 
+## ⌨️ Mode Controls & Navigation
+
+### While in Preview Mode:
+
+When viewing rendered Markdown in the current window:
+
+| Key | Action |
+| :--- | :--- |
+| **`i`** | **Switch to Edit Mode and enter Insert Mode** immediately |
+| **`a`** | **Switch to Edit Mode and enter Append Mode** immediately |
+| **`e`** / **`q`** / **`<Esc>`** | **Switch to Edit Mode in Normal Mode** |
+| **`<leader>mp`** | **Toggle back to Edit Mode** |
+| `j` / `k` / `↓` / `↑` | Scroll down / up by line |
+| `Ctrl+d` / `Ctrl+u` | Scroll half page down / up |
+| `Ctrl+f` / `Ctrl+b` | Scroll full page down / up |
+| `gg` / `G` | Jump to top / bottom of document |
+| `/pattern` / `?pattern` | Search forward / backward |
+| `n` / `N` | Jump to next / previous match |
+| **Touchpad / Mouse** | Smooth vertical scrolling |
+
+---
+
 ## 🛠️ Commands
 
 | Command | Mode | Description |
 | :--- | :--- | :--- |
-| `:Mat` | Normal | Opens interactive floating preview modal for current buffer |
-| `:Mat <file>` | Normal | Opens interactive floating preview modal for specified file |
-| `:'<,'>Mat` | Visual | Renders the selected Markdown lines in a floating preview card |
-| `:MatPreview` | Normal | Opens live auto-updating side split preview (`vsplit`) |
-| `:MatPreviewToggle` | Normal | Toggles the live side split preview open or closed |
-| `:MatClose` | Normal | Closes the active live side split preview |
-| `:MatBuild` | Any | Compiles the Rust backend binary via `cargo build --release` |
+| `:Mat` / `:MatToggle` | Normal | Toggles current `.md` window between Preview Mode and Edit Mode |
+| `:'<,'>Mat` | Visual | Renders highlighted Markdown snippet in a floating card |
+| `:MatEdit` | Normal | Switches current window back to normal Markdown edit mode |
+| `:MatPreview` | Normal | Switches current window into rendered Markdown preview mode |
+| `:MatSplit` | Normal | Opens live auto-updating side split preview (`vsplit`) |
+| `:MatFloat [file]` | Normal | Opens interactive floating preview modal |
+| `:MatClose` | Normal | Closes active preview (in-place or split) |
+| `:MatBuild` | Any | Compiles the Rust backend engine via `cargo build --release` |
 
 ---
 
-## ⌨️ Floating Modal Navigation
-
-When viewing Markdown in the floating modal (`:Mat`):
-
-| Key / Gesture | Action |
-| :--- | :--- |
-| `j` / `↓` / `Enter` | Scroll down one line |
-| `k` / `↑` | Scroll up one line |
-| `Ctrl+e` / `Ctrl+y` | Scroll down / up one line |
-| `d` / `Ctrl+d` | Scroll half-page down |
-| `u` / `Ctrl+u` | Scroll half-page up |
-| `f` / `PageDown` / `Space` | Scroll full-page down |
-| `b` / `PageUp` | Scroll full-page up |
-| `gg` / `Home` | Jump to top of document |
-| `G` / `End` | Jump to bottom of document |
-| `<number>G` (e.g. `50G`) | Jump to specific line number |
-| `/pattern` | Search forward in document |
-| `?pattern` | Search backward in document |
-| `n` / `N` | Jump to next / previous search match |
-| `:q` / `q` / `ZZ` / `<Esc><Esc>` | Dismiss floating modal and return to editor |
-| `:help` / `F1` | Toggle in-app keyboard shortcut cheat sheet |
-| **Touchpad / Mouse Wheel** | Smooth vertical scrolling |
-
----
-
-## ⚙️ Configuration
-
-Pass your custom options table to `require("mat").setup(opts)`:
+## ⚙️ Configuration Options
 
 ```lua
 require("mat").setup({
   -- Custom path to mat backend binary (auto-detected if nil)
   binary = nil,
 
-  -- Floating modal settings (:Mat)
-  float = {
-    width = 0.85,         -- Ratio of editor columns (0.1 to 1.0)
-    height = 0.85,        -- Ratio of editor lines (0.1 to 1.0)
-    border = "rounded",   -- "none" | "single" | "double" | "rounded" | "solid" | "shadow"
-  },
+  -- Automatically enter preview mode when opening a .md file
+  auto_preview = false,
 
-  -- Live split preview settings (:MatPreview)
-  preview = {
-    width = 0.45,         -- Split width ratio (0.1 to 1.0)
-    auto_update = true,   -- Automatically re-render preview when saving buffer (:w)
-    debounce_ms = 150,    -- Debounce delay for updates
-  },
-
-  -- Default keybindings (set to nil or "" to disable)
+  -- Keybindings (set to nil or "" to disable)
   keymaps = {
-    float = "<leader>mv",   -- Open floating preview
-    preview = "<leader>mp", -- Toggle live preview split
+    toggle = "<leader>mp",  -- Toggle Preview/Edit mode in current window
+    float = "<leader>mv",   -- Open floating preview modal
+    split = "<leader>ms",   -- Open side-by-side live split
+  },
+
+  -- Floating modal settings (:MatFloat)
+  float = {
+    width = 0.85,           -- Ratio of editor columns (0.1 to 1.0)
+    height = 0.85,          -- Ratio of editor lines (0.1 to 1.0)
+    border = "rounded",     -- "none" | "single" | "double" | "rounded" | "solid" | "shadow"
+  },
+
+  -- Live split preview settings (:MatSplit)
+  preview = {
+    width = 0.45,           -- Split width ratio (0.1 to 1.0)
+    auto_update = true,     -- Automatically re-render when saving buffer (:w)
+    debounce_ms = 150,      -- Debounce delay for updates
   },
 })
 ```
@@ -152,7 +186,7 @@ require("mat").setup({
 
 ## 🩺 Health Check
 
-Run Neovim's health check command to verify your environment:
+Run Neovim's health check command at any time to verify your environment:
 
 ```vim
 :checkhealth mat
@@ -176,17 +210,18 @@ mat.nvim ~
 mat/
 ├── lua/
 │   └── mat/
-│       ├── init.lua       # Main plugin API, float manager & snippet renderer
+│       ├── init.lua       # Main plugin API & keybinding orchestrator
+│       ├── toggle.lua     # In-place Preview ⇄ Edit mode switcher & auto-preview
 │       ├── config.lua     # User configuration & backend binary detection
-│       ├── preview.lua    # Live side split manager, atomic swap & autocmd hooks
+│       ├── preview.lua    # Side split live preview manager & atomic buffer swap
 │       └── health.lua     # Neovim :checkhealth provider
 ├── plugin/
-│   └── mat.lua            # Global Neovim user commands (:Mat, :MatPreview, etc.)
+│   └── mat.lua            # Global Neovim user commands (:Mat, :MatToggle, etc.)
 ├── Cargo.toml             # Rust package configuration
 └── src/
     ├── main.rs            # CLI argument parsing, streaming & TUI dispatch
     ├── layout.rs          # Layout calculations, dynamic centering & bat-style frames
-    ├── viewer.rs          # Neovim-style alternate screen TUI, event loop & keybindings
+    ├── viewer.rs          # Alternate screen TUI, event loop & keybindings
     ├── render.rs          # Pulldown-cmark AST event loop, GFM blocks & formatting
     ├── syntax.rs          # Syntect TrueColor highlighting (base16-ocean.dark)
     ├── table.rs           # GFM Unicode table layout, auto-sizing & alignment

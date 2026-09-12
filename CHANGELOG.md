@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Neovim Plugin Integration (`mat.nvim`)**: Native Lua plugin for Neovim providing `:Mat` (interactive floating preview modal), `:MatPreview` / `:MatPreviewToggle` (live auto-updating side split preview), `:'<,'>Mat` (visual selection preview), and `:checkhealth mat`.
+- **In-Place Preview ⇄ Edit Mode Switching (`mat.nvim`)**: Instant in-window toggle between raw Markdown editing and rendered reading mode with `<leader>mp` or `:MatToggle`, returning straight to editing on `i`/`e`/`q` with relative cursor position preserved.
+- **Neovim Plugin Integration (`mat.nvim`)**: Native Lua plugin for Neovim providing `:Mat` / `:MatToggle` (in-place preview switch), `:MatSplit` (live auto-updating side split preview), `:MatFloat` (floating preview modal), `:'<,'>Mat` (visual selection preview), and `:checkhealth mat`.
 - **Neovim-Style Alternate Screen Viewer**: Interactive full-window TUI on alternate buffer that restores the terminal cleanly upon exit without leaving scrollback debris.
 - **Dynamic Real-Time Centering**: Reading width capped at ~100 columns and dynamically re-centered in real time upon terminal window resize events.
 - **Vim / Neovim Keybindings**: Full movement suite (`j`/`k`, `Enter`, `Ctrl+e`/`y`, `d`/`u`, `Ctrl+d`/`u`, `f`/`b`, `PageDown`/`Up`, `Space`, `gg`/`G`, `<count>G`, `:q`, `q`, `ZZ`).
