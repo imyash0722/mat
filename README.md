@@ -9,7 +9,6 @@
 > **A blazingly fast in-editor Markdown preview plugin for Neovim powered by a sub-5ms Rust engine.**  
 > Seamlessly flip between **Preview Mode** and **Edit Mode** with a single keystroke. Zero browser overhead, zero Node.js/Python runtimes. Experience high-fidelity Markdown preview—with TrueColor syntax highlighting, GitHub Flavored Markdown (GFM) callouts and tables, bat-style framing, and interactive navigation—directly inside your terminal Neovim.
 
----
 
 ## ⚡ The Killer Feature: Instant Preview ⇄ Edit Toggle
 
@@ -35,8 +34,6 @@ When editing any `.md` file in Neovim, toggle between **rendered preview** and y
 3. **Unsaved Edits Supported:** Previews live in-memory buffer changes instantly without forcing you to write (`:w`) first.
 4. **Filetype Guarded:** Automatically protects non-markdown files from unintended toggles.
 
----
-
 ## ✨ Features
 
 - **🚀 Sub-5ms Startup Latency:** Built with a standalone Rust core (`pulldown-cmark` SIMD & `syntect`). Renders in ~4ms with zero browser or Node/Python bloat.
@@ -53,8 +50,6 @@ When editing any `.md` file in Neovim, toggle between **rendered preview** and y
   - **Clickable Links:** Native terminal OSC 8 hyperlinks.
 - **📐 Responsive Column Wrapping:** Automatically detects the split or modal column width and reformats text, tables, and borders cleanly.
 - **🩺 First-Class Health Checks:** Run `:checkhealth mat` to inspect toolchains and binary status at any time.
-
----
 
 ## 📦 Installation
 
@@ -132,8 +127,6 @@ When viewing rendered Markdown in the current window:
 | `n` / `N` | Jump to next / previous match |
 | **Touchpad / Mouse** | Smooth vertical scrolling |
 
----
-
 ## 🛠️ Commands
 
 | Command | Mode | Description |
@@ -146,8 +139,6 @@ When viewing rendered Markdown in the current window:
 | `:MatFloat [file]` | Normal | Opens interactive floating preview modal |
 | `:MatClose` | Normal | Closes active preview (in-place or split) |
 | `:MatBuild` | Any | Compiles the Rust backend engine via `cargo build --release` |
-
----
 
 ## ⚙️ Configuration Options
 
@@ -182,8 +173,6 @@ require("mat").setup({
 })
 ```
 
----
-
 ## 🩺 Health Check
 
 Run Neovim's health check command at any time to verify your environment:
@@ -201,8 +190,6 @@ mat.nvim ~
 - ✅ OK Rust backend binary found: .../mat/target/release/mat
 - ✅ OK Rust toolchain available: cargo 1.98.1
 ```
-
----
 
 ## 📋 Architecture
 
@@ -227,8 +214,6 @@ mat/
     ├── table.rs           # GFM Unicode table layout, auto-sizing & alignment
     └── terminal.rs        # ANSI-aware width calculation, wrapping & hanging indents
 ```
-
----
 
 ## 📄 License
 
