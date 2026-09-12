@@ -1,4 +1,4 @@
 /target
-mat
+/mat
 *.bak
 .cargo/

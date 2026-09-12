@@ -2,11 +2,11 @@
 name = "mat"
 version = "1.1.0"
 edition = "2024"
-description = "Vibrant, high-fidelity CLI Markdown reader with bat-style framing and syntax highlighting"
+description = "High-performance terminal Markdown preview engine for Neovim and CLI with bat-style framing"
 license = "MIT"
 repository = "https://github.com/imyash0722/mat"
 readme = "README.md"
-keywords = ["markdown", "cli", "terminal", "reader", "viewer"]
+keywords = ["markdown", "neovim", "neovim-plugin", "terminal", "preview"]
 categories = ["command-line-utilities"]
 
 [dependencies]
