@@ -21,11 +21,10 @@ struct CliArgs {
 
 fn print_help() {
     println!(
-        "mdview {} — Vibrant High-Fidelity CLI Markdown Reader
+        "mat {} — Vibrant High-Fidelity CLI Markdown Reader
 
 USAGE:
-    mdview [OPTIONS] [FILE]
-    md [OPTIONS] [FILE]
+    mat [OPTIONS] [FILE]
 
 ARGS:
     <FILE>    Markdown file to view (or - for standard input)
@@ -55,9 +54,9 @@ KEYBINDINGS (Interactive Mode):
 
 fn print_completions(shell: &str) {
     match shell.to_lowercase().as_str() {
-        "zsh" => print!("{}", include_str!("../completions/zsh/_mdview")),
-        "fish" => print!("{}", include_str!("../completions/fish/mdview.fish")),
-        "bash" => print!("{}", include_str!("../completions/bash/mdview.bash")),
+        "zsh" => print!("{}", include_str!("../completions/zsh/_mat")),
+        "fish" => print!("{}", include_str!("../completions/fish/mat.fish")),
+        "bash" => print!("{}", include_str!("../completions/bash/mat.bash")),
         other => {
             eprintln!(
                 "Error: Unsupported shell '{}'. Supported shells: zsh, fish, bash",
@@ -81,7 +80,7 @@ fn parse_args() -> Result<CliArgs, String> {
                 std::process::exit(0);
             }
             "-v" | "-V" | "--version" => {
-                println!("mdview {}", VERSION);
+                println!("mat {}", VERSION);
                 std::process::exit(0);
             }
             "-c" | "--completions" => {

@@ -1,10 +1,10 @@
 [package]
-name = "mdview"
+name = "mat"
 version = "1.1.0"
 edition = "2024"
 description = "Vibrant, high-fidelity CLI Markdown reader with bat-style framing and syntax highlighting"
 license = "MIT"
-repository = "https://github.com/imyash0722/mdview"
+repository = "https://github.com/imyash0722/mat"
 readme = "README.md"
 keywords = ["markdown", "cli", "terminal", "reader", "viewer"]
 categories = ["command-line-utilities"]

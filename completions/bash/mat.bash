@@ -1,4 +1,4 @@
-_mdview() {
+_mat() {
     local cur prev words cword
     _init_completion || return
 
@@ -20,4 +20,4 @@ _mdview() {
     _filedir '@(md|markdown|mdown|mkd|mkdn)' || _filedir
 }
 
-complete -F _mdview mdview md
+complete -F _mat mat

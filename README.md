@@ -1,12 +1,12 @@
-# mdview 📄
+# mat 📄
 
-[![GitHub Release](https://img.shields.io/github/v/release/imyash0722/mdview?color=38d39f&logo=github)](https://github.com/imyash0722/mdview/releases)
-[![CI](https://github.com/imyash0722/mdview/actions/workflows/ci.yml/badge.svg)](https://github.com/imyash0722/mdview/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/imyash0722/mat?color=38d39f&logo=github)](https://github.com/imyash0722/mat/releases)
+[![CI](https://github.com/imyash0722/mat/actions/workflows/ci.yml/badge.svg)](https://github.com/imyash0722/mat/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org/)
 
 > **A vibrant, high-fidelity CLI Markdown reader written in Rust.**  
-> Blazingly fast, standalone single-binary, bat-style framed elegance, GitHub Flavored Markdown (GFM) support, TrueColor syntax highlighting, and native shell integration for Zsh and Fish.
+> Blazingly fast, standalone single-binary, bat-style framed elegance, GitHub Flavored Markdown (GFM) support, TrueColor syntax highlighting, full Neovim-style alternate screen viewer, and native shell completions for Zsh, Fish, and Bash.
 
 
 ## ✨ Features
@@ -16,7 +16,7 @@
 - **🎯 Dynamic Real-Time Centering:** Caps reading width at ~100 columns and dynamically re-centers content in real time across terminal resize events.
 - **🖱️ Smooth Touchpad & Mouse Wheel Scrolling:** Native vertical scrolling on trackpads and mouse wheels.
 - **⌨️ Neovim Keybindings & Search:** Full Vim movement (`j`/`k`, `Ctrl+d`/`u`, `gg`/`G`, `<num>G`), forward/backward search (`/` & `?`), match jumping (`n`/`N`), ex commands (`:q`, `:help`), and `ZZ`.
-- **📊 Interactive Statusline:** Styled bottom status bar displaying active mode (`[NORMAL]`, `[COMMAND]`, `[SEARCH]`), file name, reading progress percentage, and line position (`[Line X/Y]`).
+- **📊 Terminal-Synced Statusline:** Status bar rendered in reverse video (`\x1b[7m`) that automatically synchronizes with any terminal theme (dark, light, Catppuccin, Gruvbox, Tokyo Night, etc.), displaying active mode (`[NORMAL]`, `[COMMAND]`, `[SEARCH]`), file name, reading progress percentage, and line position (`[Line X/Y]`).
 - **🖼️ `bat`-Style Framed View:** File header (`File: <name>`) and footer borders inspired by `bat`'s authentic grid style, without numbering every line of prose.
 - **💻 Contained Code Blocks with Line Numbers:** Code fences display in a contained grid with language tags, 24-bit TrueColor syntax highlighting (powered by `syntect`), and dimmed, dynamic line numbers.
 - **✨ GitHub Flavored Markdown (GFM):**
@@ -26,7 +26,7 @@
   - **Headings:** Distinctive color hierarchy (plum banner for H1, magenta for H2, cyan for H3, emerald for H4).
 - **🔗 True OSC 8 Clickable Links:** Native terminal hyperlinks with cyan underline.
 - **📐 Smart Hanging Indentation:** Continuation lines automatically detect list bullets (`- `, `* `, `• `, `1. `) and checkboxes, aligning continuation text neatly under the bullet.
-- **🐚 Zsh & Fish Shell Support:** Pre-built completions and alias integration for both shells, plus built-in `--completions <shell>` generation.
+- **🐚 Zsh, Fish & Bash Shell Support:** Built-in `--completions <shell>` generation and pre-generated completion scripts.
 
 
 ## 📦 Installation
@@ -36,15 +36,15 @@
 Install the latest pre-compiled release and shell completions with a single command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/imyash0722/mdview/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/imyash0722/mat/main/install.sh | bash
 ```
 
 ### Pre-built Binaries
 
-Download standalone archives for Linux (`x86_64`, `aarch64`, `musl`), macOS (`Intel`, `Apple Silicon`), and Windows directly from [GitHub Releases](https://github.com/imyash0722/mdview/releases/latest).
+Download standalone archives for Linux (`x86_64`, `aarch64`, `musl`), macOS (`Intel`, `Apple Silicon`), and Windows directly from [GitHub Releases](https://github.com/imyash0722/mat/releases/latest).
 
 Each archive includes:
-- `mdview` standalone executable
+- `mat` standalone executable
 - Shell completions (`zsh`, `fish`, `bash`)
 - `README.md` & `LICENSE`
 - SHA256 checksums
@@ -52,53 +52,37 @@ Each archive includes:
 ### From Source
 
 ```bash
-git clone https://github.com/imyash0722/mdview.git
-cd mdview
+git clone https://github.com/imyash0722/mat.git
+cd mat
 cargo build --release
 
 # Install binary to ~/.local/bin
-install -m 755 target/release/mdview ~/.local/bin/mdview
+install -m 755 target/release/mat ~/.local/bin/mat
 ```
 
 Ensure `~/.local/bin` is in your `$PATH`.
 
 
-## 🐚 Shell Integration & Setup
+## 🐚 Shell Completion Setup
 
-### Zsh Setup
+### Zsh
 
-1. Add the alias to your `~/.zshrc`:
-   ```zsh
-   alias md="mdview"
-   ```
+```zsh
+# Generate completions directly to your fpath (e.g. ~/.config/zsh/completions):
+mat --completions zsh > ~/.config/zsh/completions/_mat
+```
 
-2. Generate or install completions:
-   ```zsh
-   # If using ~/.config/zsh/completions (in your $FPATH):
-   mdview --completions zsh > ~/.config/zsh/completions/_mdview
-   cp ~/.config/zsh/completions/_mdview ~/.config/zsh/completions/_md
-   ```
+### Fish
 
-### Fish Setup
+```fish
+# Generate completions directly to fish completion directory:
+mat --completions fish > ~/.config/fish/completions/mat.fish
+```
 
-1. Add the alias to `~/.config/fish/conf.d/mdview.fish`:
-   ```fish
-   if type -q mdview
-       alias md="mdview"
-   end
-   ```
-
-2. Generate completions:
-   ```fish
-   mdview --completions fish > ~/.config/fish/completions/mdview.fish
-   cp ~/.config/fish/completions/mdview.fish ~/.config/fish/completions/md.fish
-   ```
-
-### Bash Setup
+### Bash
 
 ```bash
-alias md="mdview"
-mdview --completions bash > /etc/bash_completion.d/mdview
+mat --completions bash > /etc/bash_completion.d/mat
 ```
 
 
@@ -106,23 +90,23 @@ mdview --completions bash > /etc/bash_completion.d/mdview
 
 ```bash
 # View a markdown file in full-screen Neovim-style viewer:
-md README.md
-mdview tasks.md
+mat README.md
+mat tasks.md
 
 # Pipe to another command or output directly (auto-detects non-TTY):
-md README.md | grep "Features"
-curl -sL https://raw.githubusercontent.com/.../README.md | md -
+mat README.md | grep "Features"
+curl -sL https://raw.githubusercontent.com/.../README.md | mat -
 
 # Print directly to stdout without alternate screen / interactive viewer:
-md -p notes.md
-md --no-pager notes.md
+mat -p notes.md
+mat --no-pager notes.md
 
 # Override terminal width (default: centered 100 columns):
-md -w 120 architecture.md
+mat -w 120 architecture.md
 
 # Generate shell completions:
-mdview --completions zsh
-mdview --completions fish
+mat --completions zsh
+mat --completions fish
 ```
 
 ### Interactive Viewer Navigation
@@ -150,7 +134,7 @@ mdview --completions fish
 ## 📋 Architecture
 
 ```text
-mdview/
+mat/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml        # CI test matrix across Linux, macOS, Windows
@@ -165,9 +149,9 @@ mdview/
 │   ├── table.rs          # GFM Unicode table layout, column auto-sizing & alignment
 │   └── terminal.rs       # ANSI-aware width calculation, wrapping & hanging indents
 ├── completions/          # Pre-generated shell completion scripts
-│   ├── zsh/              # _mdview, _md
-│   ├── fish/             # mdview.fish, md.fish
-│   └── bash/             # mdview.bash
+│   ├── zsh/              # _mat
+│   ├── fish/             # mat.fish
+│   └── bash/             # mat.bash
 ├── scripts/
 │   └── release.sh        # Release automation helper
 ├── install.sh            # Universal one-line installer

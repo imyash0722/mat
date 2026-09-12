@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smooth Touchpad & Mouse Wheel Scrolling**: Native vertical scrolling support for mouse wheels and precision trackpads.
 - **Neovim Statusline**: Bottom status bar displaying active mode (`[NORMAL]`, `[COMMAND]`, `[SEARCH]`), file name, reading progress percentage, and line position (`[Line X/Y]`).
 ### Changed
+- **Rebranded to `mat`**: Renamed package, binary, and repository from `mdview` to `mat` with direct standalone command execution.
 - **Terminal-Synced Statusline**: Replaced hardcoded RGB colors in status bar with universal Reverse Video (`\x1b[7m`) and standard ANSI attributes, syncing seamlessly with any terminal palette (dark, light, Catppuccin, Gruvbox, etc.).
 - **Interactive Cursor**: Position and show cursor dynamically during `:` command and `/` search input, while keeping it hidden in normal mode.
 

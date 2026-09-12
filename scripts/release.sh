@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# mdview - Automated Release Helper
+# mat - Automated Release Helper
 # Usage: ./scripts/release.sh [version]
 # Example: ./scripts/release.sh 1.2.0
 # ==============================================================================
@@ -96,7 +96,7 @@ if [[ "$PUSH_CONFIRM" =~ ^[Yy]$ ]]; then
     git push origin main
     git push origin "$TAG"
     log_success "Pushed! GitHub Actions will now build and publish release ${TAG}."
-    echo -e "Track release progress at: ${BLUE}https://github.com/imyash0722/mdview/actions${RESET}"
+    echo -e "Track release progress at: ${BLUE}https://github.com/imyash0722/mat/actions${RESET}"
 else
     log_warn "Tag '${TAG}' created locally. To publish manually, run:"
     echo "  git push origin main && git push origin ${TAG}"

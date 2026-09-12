@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# mdview - Official One-Line Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/imyash0722/mdview/main/install.sh | bash
+# mat - Official One-Line Installer
+# Usage: curl -fsSL https://raw.githubusercontent.com/imyash0722/mat/main/install.sh | bash
 # ==============================================================================
 
 set -euo pipefail
 
-REPO="imyash0722/mdview"
-BINARY="mdview"
+REPO="imyash0722/mat"
+BINARY="mat"
 
 BOLD="\033[1m"
 GREEN="\033[1;32m"
@@ -22,11 +22,11 @@ log_warn() { echo -e "${YELLOW}Warning:${RESET} $1"; }
 log_error() { echo -e "${RED}Error:${RESET} $1" >&2; exit 1; }
 
 echo -e "${BLUE}"
-echo "    ███    ███ ██████  ██    ██ ██ ███████ ██     ██ "
-echo "    ████  ████ ██   ██ ██    ██ ██ ██      ██     ██ "
-echo "    ██ ████ ██ ██   ██ ██    ██ ██ █████   ██  █  ██ "
-echo "    ██  ██  ██ ██   ██  ██  ██  ██ ██      ██ ███ ██ "
-echo "    ██      ██ ██████    ████   ██ ███████  ███ ███  "
+echo "    ███    ███  █████  ████████ "
+echo "    ████  ████ ██   ██    ██    "
+echo "    ██ ████ ██ ███████    ██    "
+echo "    ██  ██  ██ ██   ██    ██    "
+echo "    ██      ██ ██   ██    ██    "
 echo -e "${RESET}"
 
 # 1. Detect OS & Architecture
@@ -69,7 +69,7 @@ if [ -z "$LATEST_TAG" ]; then
     log_warn "Could not query GitHub API for latest tag, falling back to ${LATEST_TAG}"
 fi
 
-ARCHIVE="mdview-${LATEST_TAG}-${TARGET}.tar.gz"
+ARCHIVE="mat-${LATEST_TAG}-${TARGET}.tar.gz"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/${ARCHIVE}"
 
 # 3. Download Archive
@@ -84,7 +84,7 @@ fi
 # 4. Extract
 log_info "Extracting..."
 tar -xzf "${TMP_DIR}/${ARCHIVE}" -C "$TMP_DIR"
-EXTRACTED_DIR="${TMP_DIR}/mdview-${LATEST_TAG}-${TARGET}"
+EXTRACTED_DIR="${TMP_DIR}/mat-${LATEST_TAG}-${TARGET}"
 
 # 5. Determine install directory
 INSTALL_DIR=""
@@ -106,22 +106,20 @@ fi
 # 6. Install shell completions if directories exist
 # Zsh
 if [ -d "$HOME/.config/zsh/completions" ]; then
-    cp -f "${EXTRACTED_DIR}/completions/zsh/_mdview" "$HOME/.config/zsh/completions/_mdview" 2>/dev/null || true
-    cp -f "${EXTRACTED_DIR}/completions/zsh/_md" "$HOME/.config/zsh/completions/_md" 2>/dev/null || true
+    cp -f "${EXTRACTED_DIR}/completions/zsh/_mat" "$HOME/.config/zsh/completions/_mat" 2>/dev/null || true
 fi
 
 # Fish
 if [ -d "$HOME/.config/fish/completions" ]; then
-    cp -f "${EXTRACTED_DIR}/completions/fish/mdview.fish" "$HOME/.config/fish/completions/mdview.fish" 2>/dev/null || true
-    cp -f "${EXTRACTED_DIR}/completions/fish/md.fish" "$HOME/.config/fish/completions/md.fish" 2>/dev/null || true
+    cp -f "${EXTRACTED_DIR}/completions/fish/mat.fish" "$HOME/.config/fish/completions/mat.fish" 2>/dev/null || true
 fi
 
 # Bash
 if [ -d "$HOME/.local/share/bash-completion/completions" ]; then
-    cp -f "${EXTRACTED_DIR}/completions/bash/mdview.bash" "$HOME/.local/share/bash-completion/completions/mdview" 2>/dev/null || true
+    cp -f "${EXTRACTED_DIR}/completions/bash/mat.bash" "$HOME/.local/share/bash-completion/completions/mat" 2>/dev/null || true
 fi
 
-log_success "Successfully installed mdview ${LATEST_TAG} to ${INSTALL_DIR}/${BINARY}"
+log_success "Successfully installed mat ${LATEST_TAG} to ${INSTALL_DIR}/${BINARY}"
 
 # Path warning if needed
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
@@ -131,6 +129,5 @@ fi
 
 echo ""
 echo -e "${BOLD}Get started by viewing any Markdown file:${RESET}"
-echo -e "  ${GREEN}mdview README.md${RESET}"
-echo -e "  ${GREEN}alias md=\"mdview\"${RESET}"
+echo -e "  ${GREEN}mat README.md${RESET}"
 echo ""

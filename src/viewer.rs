@@ -638,7 +638,7 @@ impl<'a> Viewer<'a> {
 
     fn render_help_overlay(&self) -> String {
         let help_lines = [
-            "┌────────────────────────── mdview Help ──────────────────────────┐",
+            "┌──────────────────────────── mat Help ───────────────────────────┐",
             "│                                                                  │",
             "│  Navigation:                                                     │",
             "│    j / k, ↓ / ↑           Scroll down / up by 1 line             │",
@@ -652,7 +652,7 @@ impl<'a> Viewer<'a> {
             "│    /pattern               Search forward                         │",
             "│    ?pattern               Search backward                        │",
             "│    n / N                  Next / previous search match           │",
-            "│    :q, q, ZZ              Quit mdview                            │",
+            "│    :q, q, ZZ              Quit mat                               │",
             "│    :help, F1              Toggle this help screen                │",
             "│                                                                  │",
             "│                 Press Esc or q to close help                     │",

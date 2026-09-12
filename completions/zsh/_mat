@@ -1,6 +1,6 @@
-#compdef mdview md
+#compdef mat
 
-_mdview() {
+_mat() {
     local -a args
     args=(
         '(-p --no-pager)'{-p,--no-pager}'[Do not pipe output into a pager]'
@@ -13,4 +13,4 @@ _mdview() {
     _arguments -s -S $args
 }
 
-_mdview "$@"
+_mat "$@"
