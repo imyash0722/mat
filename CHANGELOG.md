@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Neovim-Style Alternate Screen Viewer**: Interactive full-window TUI on alternate buffer that restores the terminal cleanly upon exit without leaving scrollback debris.
+- **Dynamic Real-Time Centering**: Reading width capped at ~100 columns and dynamically re-centered in real time upon terminal window resize events.
+- **Vim / Neovim Keybindings**: Full movement suite (`j`/`k`, `Enter`, `Ctrl+e`/`y`, `d`/`u`, `Ctrl+d`/`u`, `f`/`b`, `PageDown`/`Up`, `Space`, `gg`/`G`, `<count>G`, `:q`, `q`, `ZZ`).
+- **Interactive Forward & Backward Search**: Regex-free text search (`/pattern`, `?pattern`) with match counter and navigation (`n`/`N`).
+- **Smooth Touchpad & Mouse Wheel Scrolling**: Native vertical scrolling support for mouse wheels and precision trackpads.
+- **Neovim Statusline**: Bottom status bar displaying active mode (`[NORMAL]`, `[COMMAND]`, `[SEARCH]`), file name, reading progress percentage, and line position (`[Line X/Y]`).
+- **In-App Interactive Cheat Sheet**: Modal help overlay accessible via `:help` or `F1`.
+
 ## [1.1.0] - 2026-09-10
 
 ### Added

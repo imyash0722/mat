@@ -1,13 +1,15 @@
 use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Read, Write};
-use std::process::{Command, Stdio};
-use terminal_size::terminal_size;
 
+mod layout;
 mod render;
 mod syntax;
 mod table;
 mod terminal;
+mod viewer;
+
+use layout::{apply_centering, compute_layout, format_bat_footer, format_bat_header};
 
 const VERSION: &str = "1.1.0";
 
@@ -29,11 +31,23 @@ ARGS:
     <FILE>    Markdown file to view (or - for standard input)
 
 OPTIONS:
-    -p, --no-pager               Do not pipe output into a pager
+    -p, --no-pager               Print directly to stdout without interactive viewer
     -w, --width <COLS>           Override display width (0 for full terminal width)
     -c, --completions <SHELL>    Generate shell completion script (zsh, fish, bash)
     -v, -V, --version            Print version information
     -h, --help                   Print help information
+
+KEYBINDINGS (Interactive Mode):
+    j / k, ↓ / ↑           Scroll down / up by 1 line
+    d / u, Ctrl+d / u      Scroll down / up by half page
+    f / b, PageDown / Up   Scroll down / up by full page
+    gg / G                 Jump to beginning / end of document
+    <number>G              Jump to specific line number
+    /pattern, ?pattern     Search forward / backward
+    n / N                  Next / previous search match
+    :q, q, ZZ              Quit viewer
+    :help, F1              Toggle in-app help screen
+    Touchpad / Mouse       Smooth vertical scrolling
 ",
         VERSION
     );
@@ -126,166 +140,6 @@ fn parse_args() -> Result<CliArgs, String> {
     })
 }
 
-const DEFAULT_MAX_WIDTH: usize = 100;
-
-struct Layout {
-    content_width: usize,
-    left_pad: usize,
-}
-
-fn compute_layout(custom_width: Option<usize>) -> Layout {
-    let actual_term_width = if let Some((terminal_size::Width(w), _)) = terminal_size() {
-        w as usize
-    } else if let Ok(cols) = env::var("COLUMNS")
-        && let Ok(w) = cols.parse::<usize>()
-    {
-        w
-    } else {
-        80
-    };
-
-    let is_term = io::stdout().is_terminal();
-
-    if let Some(custom) = custom_width {
-        if custom == 0 {
-            // Explicitly requested full uncapped terminal width
-            return Layout {
-                content_width: actual_term_width.max(20),
-                left_pad: 0,
-            };
-        }
-        let content_width = custom.min(actual_term_width).max(20);
-        let left_pad = if is_term {
-            (actual_term_width.saturating_sub(content_width)) / 2
-        } else {
-            0
-        };
-        return Layout {
-            content_width,
-            left_pad,
-        };
-    }
-
-    // Default: cap content width at DEFAULT_MAX_WIDTH (100 cols) and center it
-    let content_width = actual_term_width.clamp(40, DEFAULT_MAX_WIDTH);
-    let left_pad = if is_term {
-        (actual_term_width.saturating_sub(content_width)) / 2
-    } else {
-        0
-    };
-
-    Layout {
-        content_width,
-        left_pad,
-    }
-}
-
-fn apply_centering(text: &str, left_pad: usize) -> String {
-    if left_pad == 0 {
-        return text.to_string();
-    }
-    let pad = " ".repeat(left_pad);
-    let mut result = String::with_capacity(text.len() + left_pad * 30);
-    for (i, line) in text.split('\n').enumerate() {
-        if i > 0 {
-            result.push('\n');
-        }
-        if !line.is_empty() {
-            result.push_str(&pad);
-            result.push_str(line);
-        }
-    }
-    result
-}
-
-fn format_bat_header(path: &str, width: usize) -> String {
-    let path_obj = std::path::Path::new(path);
-    let display_name = if path_obj.is_absolute() {
-        env::current_dir()
-            .ok()
-            .and_then(|cwd| path_obj.strip_prefix(&cwd).ok())
-            .and_then(|rel| rel.to_str())
-            .or_else(|| path_obj.file_name().and_then(|s| s.to_str()))
-            .unwrap_or(path)
-    } else {
-        path
-    };
-
-    let border_color = "\x1b[38;2;90;90;125m";
-    let reset = "\x1b[0m";
-    let margin = "  ";
-    let bar_len = width.saturating_sub(4);
-    let bar = "─".repeat(bar_len);
-
-    format!(
-        "{margin}{border_color}{bar}{reset}\n\
-         {margin}\x1b[38;2;130;130;160mFile: \x1b[1;38;2;84;160;255m{display_name}{reset}\n\
-         {margin}{border_color}{bar}{reset}\n\n"
-    )
-}
-
-fn format_bat_footer(width: usize) -> String {
-    let border_color = "\x1b[38;2;90;90;125m";
-    let reset = "\x1b[0m";
-    let margin = "  ";
-    let bar_len = width.saturating_sub(4);
-    let bar = "─".repeat(bar_len);
-
-    format!("\n\n{margin}{border_color}{bar}{reset}\n")
-}
-
-fn output_with_pager(rendered: &str, no_pager: bool) -> io::Result<()> {
-    if no_pager || !io::stdout().is_terminal() {
-        let mut stdout = io::stdout().lock();
-        stdout.write_all(rendered.as_bytes())?;
-        stdout.write_all(b"\n")?;
-        return Ok(());
-    }
-
-    let pager_env = env::var("PAGER").unwrap_or_else(|_| "less".to_string());
-    let mut parts = pager_env.split_whitespace();
-    let pager_bin = parts.next().unwrap_or("less");
-    let mut pager_args: Vec<&str> = parts.collect();
-
-    // Default flags for less to pass ANSI colors and avoid clearing screen
-    if (pager_bin == "less" || pager_bin.ends_with("/less"))
-        && pager_args.is_empty()
-        && env::var("LESS").is_err()
-    {
-        pager_args.push("-R"); // Raw control characters (ANSI colors)
-        pager_args.push("-F"); // Quit if one screen
-        pager_args.push("-X"); // Don't clear screen
-    }
-
-    match Command::new(pager_bin)
-        .args(&pager_args)
-        .env("LESSCHARSET", "utf-8")
-        .env(
-            "LESSUTFCHARDEF",
-            "E000-F8FF:p,F0000-FFFFD:p,100000-10FFFD:p",
-        )
-        .stdin(Stdio::piped())
-        .spawn()
-    {
-        Ok(mut child) => {
-            if let Some(mut stdin) = child.stdin.take() {
-                // Ignore BrokenPipe if user exits pager early with 'q'
-                let _ = stdin.write_all(rendered.as_bytes());
-                let _ = stdin.write_all(b"\n");
-            }
-            let _ = child.wait();
-            Ok(())
-        }
-        Err(_) => {
-            // Fallback to standard output if pager fails to execute
-            let mut stdout = io::stdout().lock();
-            stdout.write_all(rendered.as_bytes())?;
-            stdout.write_all(b"\n")?;
-            Ok(())
-        }
-    }
-}
-
 fn main() {
     let args = match parse_args() {
         Ok(a) => a,
@@ -317,11 +171,23 @@ fn main() {
         },
     };
 
-    let layout = compute_layout(args.width);
+    let file_path = args.file.as_deref().filter(|p| *p != "-");
+
+    // Full terminal window interactive viewer (Neovim-style) when stdout is a TTY
+    if !args.no_pager && io::stdout().is_terminal() {
+        let mut v = viewer::Viewer::new(&content, file_path, args.width);
+        if let Err(e) = v.run() {
+            eprintln!("Error running viewer: {}", e);
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    // Direct stdout output (when piped, redirected, or --no-pager is requested)
+    let layout = compute_layout(args.width, None, false);
     let renderer = render::MarkdownRenderer::new(layout.content_width);
     let rendered = renderer.render(&content);
 
-    let file_path = args.file.as_deref().filter(|p| *p != "-");
     let mut full_output = String::new();
     if let Some(path) = file_path {
         full_output.push_str(&format_bat_header(path, layout.content_width));
@@ -331,11 +197,8 @@ fn main() {
         full_output.push_str(&format_bat_footer(layout.content_width));
     }
 
-    let centered_output = apply_centering(&full_output, layout.left_pad);
-
-    if let Err(e) = output_with_pager(&centered_output, args.no_pager)
-        && e.kind() != io::ErrorKind::BrokenPipe
-    {
-        eprintln!("Error writing output: {}", e);
-    }
+    let final_output = apply_centering(&full_output, layout.left_pad);
+    let mut stdout_lock = io::stdout().lock();
+    let _ = stdout_lock.write_all(final_output.as_bytes());
+    let _ = stdout_lock.write_all(b"\n");
 }
