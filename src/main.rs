@@ -128,15 +128,15 @@ fn parse_args() -> Result<CliArgs, String> {
 
 fn get_terminal_width(custom_width: Option<usize>) -> usize {
     if let Some(w) = custom_width {
-        return w.max(40);
+        return w.max(20);
     }
     if let Some((terminal_size::Width(w), _)) = terminal_size() {
-        return (w as usize).clamp(40, 100);
+        return (w as usize).max(20);
     }
     if let Ok(cols) = env::var("COLUMNS")
         && let Ok(w) = cols.parse::<usize>()
     {
-        return w.clamp(40, 100);
+        return w.max(20);
     }
     80
 }

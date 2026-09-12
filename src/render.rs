@@ -498,7 +498,7 @@ impl MarkdownRenderer {
                 };
                 let reset = "\x1b[0m";
 
-                let box_width = (self.term_width.saturating_sub(4)).min(84);
+                let box_width = self.term_width.saturating_sub(4);
                 let title_vis = visible_width(icon_title);
                 let top_fill = box_width.saturating_sub(6 + title_vis);
 
